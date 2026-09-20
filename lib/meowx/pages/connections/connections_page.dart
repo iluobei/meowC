@@ -37,10 +37,26 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
   Timer? _timer;
   bool _polling = false;
 
+  /// 进入本页后是否已拿到过一次快照（之前显示「加载中」而不是「暂无连接」）
+  bool _loaded = false;
+
   @override
   void initState() {
     super.initState();
     _timer = Timer.periodic(const Duration(milliseconds: 1500), (_) => unawaited(_poll()));
+    // 切到本页立即拉一次，不等定时器
+    ref.listenManual(meowTabProvider, (prev, next) {
+      if (next == MeowTab.connections) {
+        unawaited(_poll());
+      } else {
+        _loaded = false;
+      }
+    });
+    ref.listenManual(isRunningProvider, (prev, next) {
+      _loaded = false;
+      if (next) unawaited(_poll());
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_poll()));
   }
 
   @override
@@ -49,7 +65,7 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
     super.dispose();
   }
 
-  bool get _visible => ref.read(meowTabProvider) == MeowTab.connections;
+  bool get _visible => ref.read(meowTabProvider) == MeowTab.connections || ref.read(isWideLayoutProvider);
 
   Future<void> _poll() async {
     if (!mounted || _polling) return;
@@ -66,7 +82,10 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
       final list = await clashCore.getConnections();
       if (!mounted) return;
       ref.read(connectionCountProvider.notifier).state = list.length;
-      setState(() => _conns = list);
+      setState(() {
+        _conns = list;
+        _loaded = true;
+      });
     } catch (_) {
     } finally {
       _polling = false;
@@ -136,6 +155,8 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
       list = _LogList(query: _query);
     } else if (!running) {
       list = const _Empty(icon: Icons.power_off_rounded, text: S.tunnelNotConnected);
+    } else if (!_loaded) {
+      list = Center(child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: mm.t3)));
     } else {
       final items = _filtered;
       final totalUp = items.fold<int>(0, (a, c) => a + c.upload);

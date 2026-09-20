@@ -171,10 +171,13 @@ class ClashCore {
     if (res.isEmpty) {
       return [];
     }
+    // MeowX：连接多时快照有几百 KB，JSON 解析放到独立 isolate，别卡 UI 线程
     try {
-      final connectionsData = json.decode(res) as Map;
-      final connectionsRaw = connectionsData['connections'] as List? ?? [];
-      return connectionsRaw.map((e) => TrackerInfo.fromJson(e)).toList();
+      return await Isolate.run(() {
+        final connectionsData = json.decode(res) as Map;
+        final connectionsRaw = connectionsData['connections'] as List? ?? [];
+        return connectionsRaw.map((e) => TrackerInfo.fromJson(e)).toList();
+      });
     } catch (e) {
       commonPrint.log('Failed to parse connections: $e');
       return [];
