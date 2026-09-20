@@ -82,4 +82,6 @@ void applyMeowAuthentication(Map<String, dynamic> rawConfig, MeowSettings meow) 
   final u = meow.localProxy.username.trim();
   if (u.isEmpty) return;
   rawConfig['authentication'] = ['$u:${meow.localProxy.password}'];
+  // 本机免认证（mihomo 默认 skip-auth-prefixes 为空）：App 自己经 127.0.0.1:mixed-port 的请求不带凭据
+  rawConfig['skip-auth-prefixes'] ??= ['127.0.0.1/32', '::1/128'];
 }
