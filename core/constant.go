@@ -75,6 +75,8 @@ type TestDelayParams struct {
 	ProxyName string `json:"proxy-name"`
 	TestUrl   string `json:"test-url"`
 	Timeout   int64  `json:"timeout"`
+	// MeowX：测速方式 ""|"url"（HTTPS 延迟，去掉握手）/ "url-full"（真连接延迟）/ "tcping"（只连入口端口）
+	Mode string `json:"mode"`
 }
 
 type ExternalProvider struct {

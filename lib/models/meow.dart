@@ -41,6 +41,13 @@ enum LatencyMode {
     LatencyMode.urlFull => (300, 600),
     LatencyMode.tcping => (100, 200),
   };
+
+  /// 传给核心 asyncTestDelay 的 mode 字段
+  String get wireName => switch (this) {
+    LatencyMode.url => 'url',
+    LatencyMode.urlFull => 'url-full',
+    LatencyMode.tcping => 'tcping',
+  };
 }
 
 /// 节点卡片三档：紧凑 3 列 / 标准 2 列 / 大 1 列。

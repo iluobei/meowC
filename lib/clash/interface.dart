@@ -28,7 +28,7 @@ mixin ClashInterface {
 
   Future<Result<String>> convertAgeSecretKeyToPublicKey(String secretKey);
 
-  Future<String> asyncTestDelay(String url, String proxyName);
+  Future<String> asyncTestDelay(String url, String proxyName, {String mode = ''});
 
   FutureOr<String> updateConfig(UpdateParams updateParams);
 
@@ -395,11 +395,12 @@ abstract class ClashHandlerInterface with ClashInterface {
   }
 
   @override
-  Future<String> asyncTestDelay(String url, String proxyName) {
+  Future<String> asyncTestDelay(String url, String proxyName, {String mode = ''}) {
     final delayParams = {
       'proxy-name': proxyName,
       'timeout': httpTimeoutDuration.inMilliseconds,
       'test-url': url,
+      'mode': mode,
     };
     return invoke<String>(
       method: ActionMethod.asyncTestDelay,

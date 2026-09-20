@@ -260,8 +260,8 @@ class ClashCore {
     await clashInterface.stopListener();
   }
 
-  Future<Delay> getDelay(String url, String proxyName) async {
-    final data = await clashInterface.asyncTestDelay(url, proxyName);
+  Future<Delay> getDelay(String url, String proxyName, {String mode = ''}) async {
+    final data = await clashInterface.asyncTestDelay(url, proxyName, mode: mode);
     if (data.isEmpty) {
       throw Exception('Empty delay response');
     }

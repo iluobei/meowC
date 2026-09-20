@@ -114,7 +114,7 @@ class IconRail extends StatelessWidget {
         children: [
           ...top,
           const Spacer(),
-          if (bottom != null) bottom,
+          ?bottom,
         ],
       ),
     );

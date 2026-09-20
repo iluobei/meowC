@@ -2,6 +2,7 @@ import 'package:bett_box/clash/clash.dart';
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/models/models.dart';
 import 'package:bett_box/providers/providers.dart';
+import 'package:bett_box/state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// 宽屏（iPad 式三栏）阈值：沿用 Bettbox 的 laptop 上限 840。

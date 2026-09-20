@@ -42,15 +42,6 @@ class ApplicationState extends ConsumerState<Application>
     },
   );
 
-  // MeowX 主题固定系统蓝，不再用动态取色；保留给「高级」里的调色板对照
-  // ignore: unused_element
-  ColorScheme _getAppColorScheme({
-    required Brightness brightness,
-    int? primaryColor,
-  }) {
-    return ref.read(genColorSchemeProvider(brightness));
-  }
-
   @override
   void initState() {
     super.initState();

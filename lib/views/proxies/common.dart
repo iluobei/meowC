@@ -107,7 +107,12 @@ Future<Delay> _testProxyDelay(DelayTestTarget target) {
   return _delayTestRequestPool.run(target, () async {
     final appController = globalState.appController;
     appController.setDelay(Delay(url: target.url, name: target.name, value: 0));
-    final delay = await clashCore.getDelay(target.url, target.name);
+    // MeowX：测速方式由「设置 → 测速方式」决定（HTTPS 延迟 / 真连接 / TCPing）
+    final delay = await clashCore.getDelay(
+      target.url,
+      target.name,
+      mode: globalState.config.meow.latencyMode.wireName,
+    );
     appController.setDelay(delay);
     return delay;
   });

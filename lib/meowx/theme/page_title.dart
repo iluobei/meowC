@@ -31,7 +31,7 @@ class PageTitle extends StatelessWidget {
                   ),
                 ),
               ),
-              if (trailing != null) trailing!,
+              ?trailing,
             ],
           ),
           if (subtitle != null) ...[const SizedBox(height: 2), subtitle!],

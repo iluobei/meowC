@@ -52,7 +52,10 @@ class SettingsPage extends ConsumerWidget {
               value: meow.latencyMode,
               values: LatencyMode.values,
               label: (v) => v.label,
-              onChanged: (v) => ref.read(meowSettingProvider.notifier).updateState((s) => s.copyWith(latencyMode: v)),
+              onChanged: (v) {
+                ref.read(meowSettingProvider.notifier).updateState((s) => s.copyWith(latencyMode: v));
+                ref.read(delayDataSourceProvider.notifier).value = {};   // 三档口径不同，旧值作废
+              },
             ),
           ],
         ),
@@ -186,7 +189,7 @@ class _Row extends StatelessWidget {
                 ],
               ),
             ),
-            if (trailing != null) trailing!,
+            ?trailing,
           ],
         ),
       ),
