@@ -11,6 +11,10 @@ import '../pages/dashboard/dashboard_page.dart';
 import '../pages/profiles/profiles_page.dart';
 import '../pages/proxies/proxies_page.dart';
 import '../pages/settings/settings_page.dart';
+import '../panel/account.dart';
+import '../panel/client.dart';
+import '../panel/realtime.dart';
+import '../state/meow_settings.dart';
 import '../state/status.dart';
 import '../theme/icon_rail.dart';
 import '../theme/tokens.dart';
@@ -27,10 +31,20 @@ class MeowRoot extends ConsumerStatefulWidget {
 
 class _MeowRootState extends ConsumerState<MeowRoot> {
   late final ProviderSubscription<PageLabel> _pageSub;
+  late final ProviderSubscription<(String, String, bool)> _realtimeSub;
+  RealtimeClient? _realtime;
 
   @override
   void initState() {
     super.initState();
+    _realtimeSub = ref.listenManual(
+      Provider<(String, String, bool)>((r) {
+        final a = r.watch(meowSettingProvider.select((s) => s.account));
+        return (a.host, a.token, r.watch(isRunningProvider));
+      }),
+      (prev, next) => _syncRealtime(next),
+      fireImmediately: true,
+    );
     _pageSub = ref.listenManual(currentPageLabelProvider, (prev, next) {
       if (prev == next) return;
       final tab = MeowTab.fromPageLabel(next);
@@ -47,7 +61,33 @@ class _MeowRootState extends ConsumerState<MeowRoot> {
   @override
   void dispose() {
     _pageSub.close();
+    _realtimeSub.close();
+    _realtime?.stop();
     super.dispose();
+  }
+
+  void _syncRealtime((String, String, bool) state) {
+    final (host, token, running) = state;
+    final want = host.isNotEmpty && token.isNotEmpty && running;
+    if (!want) {
+      _realtime?.stop();
+      _realtime = null;
+      return;
+    }
+    if (_realtime != null && _realtime!.token == token && _realtime!.client.base == PanelClient(host).base) return;
+    _realtime?.stop();
+    _realtime = RealtimeClient(
+      client: ref.read(panelClientProvider) ?? PanelClient(host),
+      token: token,
+      onEvent: (type, _) {
+        if (type != 'subscription_changed') return;
+        final current = ref.read(currentProfileProvider);
+        if (current != null && current.url.isNotEmpty) {
+          globalState.appController.updateProfile(current);
+        }
+        ref.read(accountActionsProvider).refreshSubscriptions();
+      },
+    )..start();
   }
 
   void _pushBettboxPage(PageLabel label) {

@@ -1,4 +1,5 @@
 import 'package:bett_box/meowx/config/meow_patch.dart';
+import 'package:bett_box/meowx/state/overrides.dart';
 import 'package:bett_box/models/meow.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -13,6 +14,29 @@ void main() {
     test('强制档不看声明', () {
       expect(effectiveDnsMode(MeowDnsMode.fakeIp, 'redir-host'), 'fake-ip');
       expect(effectiveDnsMode(MeowDnsMode.redirHost, 'fake-ip'), 'redir-host');
+    });
+  });
+
+  group('用户覆写', () {
+    test('DNS 劫持写 hosts，保留原有', () {
+      final raw = <String, dynamic>{'hosts': {'a.com': '1.1.1.1'}};
+      applyMeowHosts(raw, const MeowSettings(dnsHijack: {'b.com': '2.2.2.2'}));
+      expect(raw['hosts'], {'a.com': '1.1.1.1', 'b.com': '2.2.2.2'});
+    });
+    test('前置规则：绕过 → 推送直连', () {
+      expect(meowPrependRules(const MeowSettings(bypassDomains: ['x.com'], bypassCidrs: ['10.0.0.0/8'], proxyPush: true)), [
+        'DOMAIN,x.com,DIRECT',
+        'IP-CIDR,10.0.0.0/8,DIRECT,no-resolve',
+        ...pushDirectRules,
+      ]);
+      expect(meowPrependRules(const MeowSettings()), isEmpty);
+    });
+    test('本地代理凭据 → authentication', () {
+      final raw = <String, dynamic>{};
+      applyMeowAuthentication(raw, const MeowSettings(localProxy: MeowLocalProxy(username: 'u', password: 'p')));
+      expect(raw['authentication'], ['u:p']);
+      applyMeowAuthentication(raw = {}, const MeowSettings());
+      expect(raw.containsKey('authentication'), isFalse);
     });
   });
 

@@ -1,5 +1,7 @@
 import 'package:bett_box/models/meow.dart';
 
+import '../state/overrides.dart';
+
 /// fake-ip 缺省过滤（与 iOS 端补默认时一致）。
 const defaultFakeIpFilter = [
   '*.lan',
@@ -54,4 +56,30 @@ void applyMeowDns(Map<String, dynamic> rawConfig, MeowDnsMode mode) {
     if (filter is! List || filter.isEmpty) dns['fake-ip-filter'] = List<String>.from(defaultFakeIpFilter);
   }
   rawConfig['dns'] = dns;
+}
+
+/// MeowX 用户覆写：DNS 劫持 → hosts；绕过 / 推送直连 → 规则最前；本地代理凭据 → authentication。
+/// 在 Bettbox 拼好 hosts 之后调用（hosts 部分），规则部分在 rules 写回 rawConfig 前调用。
+void applyMeowHosts(Map<String, dynamic> rawConfig, MeowSettings meow) {
+  if (meow.dnsHijack.isEmpty) return;
+  final hosts = switch (rawConfig['hosts']) {
+    Map m => m.cast<String, dynamic>(),
+    _ => <String, dynamic>{},
+  };
+  for (final e in meow.dnsHijack.entries) {
+    hosts[e.key] = e.value;
+  }
+  rawConfig['hosts'] = hosts;
+}
+
+/// 返回要前置到规则表最前的规则（绕过代理 → 推送直连）。
+List<String> meowPrependRules(MeowSettings meow) => [
+  ...bypassRules(meow.bypassDomains, meow.bypassCidrs),
+  if (meow.proxyPush) ...pushDirectRules,
+];
+
+void applyMeowAuthentication(Map<String, dynamic> rawConfig, MeowSettings meow) {
+  final u = meow.localProxy.username.trim();
+  if (u.isEmpty) return;
+  rawConfig['authentication'] = ['$u:${meow.localProxy.password}'];
 }

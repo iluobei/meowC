@@ -4,6 +4,7 @@ import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:bett_box/views/views.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/strings.dart';
@@ -14,10 +15,24 @@ import '../../theme/glass_card.dart';
 import '../../theme/page_title.dart';
 import '../../theme/tokens.dart';
 import '../../theme/two_pane.dart';
+import 'overrides_pages.dart';
 
-/// 设置页（P1：代理 / 外观 / 高级 / 关于；其余分组 P2 补齐）。
+const _testUrlPresets = {
+  'Cloudflare': 'https://cp.cloudflare.com/generate_204',
+  'Google': 'https://www.gstatic.com/generate_204',
+  'Google（connectivitycheck）': 'http://connectivitycheck.gstatic.com/generate_204',
+  'Apple': 'https://captive.apple.com/hotspot-detect.html',
+};
+
+const _syncOptions = {0: '手动', 6: '6 小时', 12: '12 小时', 24: '每天', 72: '3 天'};
+
+/// 设置页：代理 / 流量控制 / 本地代理 / 订阅 / 日志 / 外观 / 高级 / 关于（与 iOS 端分组一致）。
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
+
+  void _reloadIfRunning(WidgetRef ref) {
+    if (ref.read(isRunningProvider)) globalState.appController.applyProfileDebounce(silence: true);
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,6 +40,11 @@ class SettingsPage extends ConsumerWidget {
     final wide = ref.watch(isWideLayoutProvider);
     final themeMode = ref.watch(themeSettingProvider.select((s) => s.themeMode));
     final meow = ref.watch(meowSettingProvider);
+    final testUrl = ref.watch(appSettingProvider.select((s) => s.testUrl));
+    final openLogs = ref.watch(appSettingProvider.select((s) => s.openLogs));
+    final blockQuic = ref.watch(vpnSettingProvider.select((s) => s.disableQuic));
+    final clash = ref.watch(patchClashConfigProvider);
+    final localIp = ref.watch(localIpProvider);
 
     final body = ListView(
       padding: EdgeInsets.fromLTRB(wide ? 0 : 16, wide ? 16 : 0, 16, 40),
@@ -45,7 +65,7 @@ class SettingsPage extends ConsumerWidget {
                 final declared = ref.read(declaredDnsModeProvider);
                 final changed = effectiveDnsMode(meow.dnsMode, declared) != effectiveDnsMode(v, declared);
                 ref.read(meowSettingProvider.notifier).updateState((s) => s.copyWith(dnsMode: v));
-                if (changed && ref.read(isRunningProvider)) globalState.appController.applyProfileDebounce();
+                if (changed) _reloadIfRunning(ref);
               },
             ),
             _PickerRow<LatencyMode>(
@@ -59,6 +79,155 @@ class SettingsPage extends ConsumerWidget {
                 ref.read(meowSettingProvider.notifier).updateState((s) => s.copyWith(latencyMode: v));
                 ref.read(delayDataSourceProvider.notifier).value = {};   // 三档口径不同，旧值作废
               },
+            ),
+            _PickerRow<String>(
+              icon: Icons.link_rounded,
+              color: mm.orange,
+              title: '测速地址',
+              value: _testUrlPresets.containsValue(testUrl) ? testUrl : '__custom__',
+              values: [..._testUrlPresets.values, '__custom__'],
+              label: (v) => v == '__custom__' ? '自定义' : _testUrlPresets.entries.firstWhere((e) => e.value == v).key,
+              onChanged: (v) async {
+                if (v == '__custom__') {
+                  final input = await _prompt(context, '自定义测速地址', testUrl, keyboard: TextInputType.url);
+                  if (input == null || input.trim().isEmpty) return;
+                  v = input.trim();
+                }
+                ref.read(appSettingProvider.notifier).updateState((s) => s.copyWith(testUrl: v));
+              },
+            ),
+          ],
+        ),
+        _Section(
+          title: '流量控制',
+          children: [
+            _SwitchRow(
+              icon: Icons.block_rounded,
+              color: mm.slow,
+              title: '阻止 QUIC',
+              subtitle: '丢弃 UDP 443，让应用回落 TCP',
+              value: blockQuic,
+              onChanged: (v) {
+                ref.read(vpnSettingProvider.notifier).updateState((s) => s.copyWith(disableQuic: v));
+                _reloadIfRunning(ref);
+              },
+            ),
+            _SwitchRow(
+              icon: Icons.notifications_active_rounded,
+              color: mm.good,
+              title: '代理推送服务',
+              subtitle: '关闭时 FCM / GMS 推送直连',
+              value: !meow.proxyPush,
+              onChanged: (v) {
+                ref.read(meowSettingProvider.notifier).updateState((s) => s.copyWith(proxyPush: !v));
+                _reloadIfRunning(ref);
+              },
+            ),
+            _Row(
+              icon: Icons.alt_route_rounded,
+              color: mm.pur,
+              title: 'DNS 劫持',
+              trailing: _chevron(mm, meow.dnsHijack.isEmpty ? null : '${meow.dnsHijack.length}'),
+              onTap: () => BaseNavigator.push(context, const DnsHijackPage()),
+            ),
+            _Row(
+              icon: Icons.call_split_rounded,
+              color: mm.teal,
+              title: '绕过代理',
+              trailing: _chevron(mm, meow.bypassDomains.isEmpty && meow.bypassCidrs.isEmpty ? null : '${meow.bypassDomains.length + meow.bypassCidrs.length}'),
+              onTap: () => BaseNavigator.push(context, const BypassPage()),
+            ),
+          ],
+        ),
+        _Section(
+          title: '本地代理',
+          footer: '${'127.0.0.1:${clash.mixedPort}'}${clash.allowLan && localIp != null ? '  ·  $localIp:${clash.mixedPort}' : ''}（点按复制）',
+          onFooterTap: () {
+            Clipboard.setData(ClipboardData(text: '127.0.0.1:${clash.mixedPort}'));
+            globalState.showNotifier('已复制');
+          },
+          children: [
+            _Row(
+              icon: Icons.settings_ethernet_rounded,
+              color: mm.accent,
+              title: '端口',
+              trailing: Text('${clash.mixedPort}', style: MeowFont.mono(size: MeowFont.subheadline, color: mm.t2)),
+              onTap: () async {
+                final input = await _prompt(context, '本地代理端口（1024–65535）', '${clash.mixedPort}', keyboard: TextInputType.number);
+                final port = int.tryParse(input ?? '');
+                if (port == null) return;
+                if (port < 1024 || port > 65535) {
+                  globalState.showNotifier('端口范围 1024–65535');
+                  return;
+                }
+                ref.read(patchClashConfigProvider.notifier).updateState((s) => s.copyWith(mixedPort: port));
+              },
+            ),
+            _SwitchRow(
+              icon: Icons.lan_rounded,
+              color: mm.good,
+              title: '允许局域网',
+              value: clash.allowLan,
+              onChanged: (v) => ref.read(patchClashConfigProvider.notifier).updateState((s) => s.copyWith(allowLan: v)),
+            ),
+            _Row(
+              icon: Icons.person_rounded,
+              color: mm.orange,
+              title: '用户名',
+              trailing: Text(meow.localProxy.username.isEmpty ? '未设置' : meow.localProxy.username, style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2)),
+              onTap: () async {
+                final v = await _prompt(context, '用户名（留空 = 不认证）', meow.localProxy.username);
+                if (v == null) return;
+                ref.read(meowSettingProvider.notifier).updateState((s) => s.copyWith(localProxy: s.localProxy.copyWith(username: v.trim())));
+                _reloadIfRunning(ref);
+              },
+            ),
+            _Row(
+              icon: Icons.password_rounded,
+              color: mm.pur,
+              title: '密码',
+              trailing: Text(meow.localProxy.password.isEmpty ? '未设置' : '••••••', style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2)),
+              onTap: () async {
+                final v = await _prompt(context, '密码', meow.localProxy.password, obscure: true);
+                if (v == null) return;
+                ref.read(meowSettingProvider.notifier).updateState((s) => s.copyWith(localProxy: s.localProxy.copyWith(password: v)));
+                _reloadIfRunning(ref);
+              },
+            ),
+          ],
+        ),
+        _Section(
+          title: '订阅',
+          footer: '到期后下次进入 App 自动重拉当前订阅。',
+          children: [
+            _PickerRow<int>(
+              icon: Icons.sync_rounded,
+              color: mm.accent,
+              title: '同步间隔',
+              value: _syncOptions.containsKey(meow.syncIntervalHours) ? meow.syncIntervalHours : 24,
+              values: _syncOptions.keys.toList(),
+              label: (v) => _syncOptions[v]!,
+              onChanged: (v) {
+                ref.read(meowSettingProvider.notifier).updateState((s) => s.copyWith(syncIntervalHours: v));
+                final notifier = ref.read(profilesProvider.notifier);
+                for (final p in ref.read(profilesProvider)) {
+                  if (p.url.isEmpty) continue;
+                  notifier.setProfile(p.copyWith(autoUpdate: v > 0, autoUpdateDuration: Duration(hours: v > 0 ? v : 24)));
+                }
+              },
+            ),
+          ],
+        ),
+        _Section(
+          title: '日志',
+          footer: '默认关闭；开启后在「连接」页查看日志流。',
+          children: [
+            _SwitchRow(
+              icon: Icons.notes_rounded,
+              color: mm.t2,
+              title: '记录日志',
+              value: openLogs,
+              onChanged: (v) => ref.read(appSettingProvider.notifier).updateState((s) => s.copyWith(openLogs: v)),
             ),
           ],
         ),
@@ -76,10 +245,7 @@ class SettingsPage extends ConsumerWidget {
                 ThemeMode.light => S.themeLight,
                 ThemeMode.dark => S.themeDark,
               },
-              onChanged: (v) {
-                final n = ref.read(themeSettingProvider.notifier);
-                n.value = ref.read(themeSettingProvider).copyWith(themeMode: v);
-              },
+              onChanged: (v) => ref.read(themeSettingProvider.notifier).updateState((s) => s.copyWith(themeMode: v)),
             ),
           ],
         ),
@@ -91,7 +257,7 @@ class SettingsPage extends ConsumerWidget {
               color: mm.orange,
               title: S.advanced,
               subtitle: S.advancedDesc,
-              trailing: Icon(Icons.chevron_right_rounded, color: mm.t3),
+              trailing: _chevron(mm, null),
               onTap: () => BaseNavigator.push(context, const ToolsView()),
             ),
           ],
@@ -119,12 +285,37 @@ class SettingsPage extends ConsumerWidget {
     );
     return wide ? PageWidth(child: body) : body;
   }
+
+  static Widget _chevron(MeowTokens mm, String? count) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      if (count != null) Text(count, style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2)),
+      Icon(Icons.chevron_right_rounded, color: mm.t3),
+    ],
+  );
+
+  static Future<String?> _prompt(BuildContext context, String title, String initial, {TextInputType? keyboard, bool obscure = false}) {
+    final c = TextEditingController(text: initial);
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: TextField(controller: c, autofocus: true, keyboardType: keyboard, obscureText: obscure, onSubmitted: (v) => Navigator.of(ctx).pop(v)),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
+          FilledButton(onPressed: () => Navigator.of(ctx).pop(c.text), child: const Text('确定')),
+        ],
+      ),
+    );
+  }
 }
 
 class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.children});
+  const _Section({required this.title, required this.children, this.footer, this.onFooterTap});
   final String title;
   final List<Widget> children;
+  final String? footer;
+  final VoidCallback? onFooterTap;
 
   @override
   Widget build(BuildContext context) {
@@ -150,6 +341,14 @@ class _Section extends StatelessWidget {
               ],
             ),
           ),
+          if (footer != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 14, top: 6),
+              child: GestureDetector(
+                onTap: onFooterTap,
+                child: Text(footer!, style: TextStyle(fontSize: MeowFont.caption, color: mm.t3)),
+              ),
+            ),
         ],
       ),
     );
@@ -187,8 +386,7 @@ class _Row extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title, style: TextStyle(fontSize: MeowFont.body, color: mm.t1)),
-                  if (subtitle != null)
-                    Text(subtitle!, style: TextStyle(fontSize: MeowFont.caption, color: mm.t3)),
+                  if (subtitle != null) Text(subtitle!, style: TextStyle(fontSize: MeowFont.caption, color: mm.t3)),
                 ],
               ),
             ),
@@ -198,6 +396,26 @@ class _Row extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SwitchRow extends StatelessWidget {
+  const _SwitchRow({required this.icon, required this.color, required this.title, this.subtitle, required this.value, required this.onChanged});
+  final IconData icon;
+  final Color color;
+  final String title;
+  final String? subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) => _Row(
+    icon: icon,
+    color: color,
+    title: title,
+    subtitle: subtitle,
+    trailing: Switch.adaptive(value: value, onChanged: onChanged),
+    onTap: () => onChanged(!value),
+  );
 }
 
 class _PickerRow<T> extends StatelessWidget {

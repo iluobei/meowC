@@ -802,8 +802,11 @@ class GlobalState {
       );
     }
 
-    // MeowX：DNS 模式（跟随订阅 / Redir-Host / Fake-IP）只改 dns.enhanced-mode，在 Bettbox 的 dns 覆写之后生效
+    // MeowX：DNS 模式（跟随订阅 / Redir-Host / Fake-IP）只改 dns.enhanced-mode，在 Bettbox 的 dns 覆写之后生效；
+    // DNS 劫持写进 hosts；本地代理凭据写 authentication
     applyMeowDns(rawConfig, config.meow.dnsMode);
+    applyMeowHosts(rawConfig, config.meow);
+    applyMeowAuthentication(rawConfig, config.meow);
 
     if (rawConfig['dns'] != null &&
         rawConfig['dns']['fallback-filter'] != null) {
@@ -1056,7 +1059,8 @@ class GlobalState {
     }
 
     rawConfig.remove('rule');
-    rawConfig['rules'] = rules;
+    // MeowX：绕过代理 / 推送直连规则放最前（先于模式与订阅规则）
+    rawConfig['rules'] = [...meowPrependRules(config.meow), ...rules];
     return rawConfig;
   }
 
