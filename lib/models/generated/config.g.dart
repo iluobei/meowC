@@ -37,7 +37,7 @@ _AppSettingProps _$AppSettingPropsFromJson(
   silentLaunch: json['silentLaunch'] as bool? ?? false,
   smartDelayLaunch: json['smartDelayLaunch'] as bool? ?? false,
   autoRun: json['autoRun'] as bool? ?? false,
-  openLogs: json['openLogs'] as bool? ?? true,
+  openLogs: json['openLogs'] as bool? ?? false,
   closeConnections: json['closeConnections'] as bool? ?? true,
   testUrl: json['testUrl'] as String? ?? defaultTestUrl,
   showStartSwitch: json['showStartSwitch'] as bool? ?? false,
@@ -563,6 +563,9 @@ _Config _$ConfigFromJson(Map<String, dynamic> json) => _Config(
       : ScriptProps.fromJson(json['scriptProps'] as Map<String, dynamic>),
   nodeExcludeFilter: json['nodeExcludeFilter'] as String? ?? '',
   healthCheckTimeout: (json['healthCheckTimeout'] as num?)?.toInt() ?? 5000,
+  meow: json['meow'] == null
+      ? const MeowSettings()
+      : MeowSettings.fromJson(json['meow'] as Map<String, dynamic>),
 );
 
 Map<String, dynamic> _$ConfigToJson(_Config instance) => <String, dynamic>{
@@ -586,4 +589,5 @@ Map<String, dynamic> _$ConfigToJson(_Config instance) => <String, dynamic>{
   'scriptProps': instance.scriptProps,
   'nodeExcludeFilter': instance.nodeExcludeFilter,
   'healthCheckTimeout': instance.healthCheckTimeout,
+  'meow': instance.meow,
 };

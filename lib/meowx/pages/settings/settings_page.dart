@@ -117,9 +117,9 @@ class SettingsPage extends ConsumerWidget {
               color: mm.good,
               title: '代理推送服务',
               subtitle: '关闭时 FCM / GMS 推送直连',
-              value: !meow.proxyPush,
+              value: !meow.pushDirect,
               onChanged: (v) {
-                ref.read(meowSettingProvider.notifier).updateState((s) => s.copyWith(proxyPush: !v));
+                ref.read(meowSettingProvider.notifier).updateState((s) => s.copyWith(pushDirect: !v));
                 _reloadIfRunning(ref);
               },
             ),

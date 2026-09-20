@@ -101,8 +101,8 @@ abstract class MeowSettings with _$MeowSettings {
     /// 订阅同步间隔（小时），0 = 手动
     @Default(24) int syncIntervalHours,
 
-    /// 代理推送服务（Android：FCM / GMS 直连开关）
-    @Default(false) bool proxyPush,
+    /// 推送服务直连（关闭「代理推送服务」= true：FCM / GMS / APNs 走 DIRECT）
+    @Default(false) bool pushDirect,
 
     /// DNS 劫持：域名 → IPv4
     @Default({}) Map<String, String> dnsHijack,

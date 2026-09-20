@@ -78,3 +78,6 @@ app.*.map.json
 # FVM Version Cache
 .fvm/
 .fvmrc
+# MeowX 模型的生成物由 build_runner 产出（CI 每次重生成）
+lib/models/generated/meow.freezed.dart
+lib/models/generated/meow.g.dart

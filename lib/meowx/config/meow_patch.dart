@@ -75,7 +75,7 @@ void applyMeowHosts(Map<String, dynamic> rawConfig, MeowSettings meow) {
 /// 返回要前置到规则表最前的规则（绕过代理 → 推送直连）。
 List<String> meowPrependRules(MeowSettings meow) => [
   ...bypassRules(meow.bypassDomains, meow.bypassCidrs),
-  if (meow.proxyPush) ...pushDirectRules,
+  if (meow.pushDirect) ...pushDirectRules,
 ];
 
 void applyMeowAuthentication(Map<String, dynamic> rawConfig, MeowSettings meow) {

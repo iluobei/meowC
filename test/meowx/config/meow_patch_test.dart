@@ -24,7 +24,7 @@ void main() {
       expect(raw['hosts'], {'a.com': '1.1.1.1', 'b.com': '2.2.2.2'});
     });
     test('前置规则：绕过 → 推送直连', () {
-      expect(meowPrependRules(const MeowSettings(bypassDomains: ['x.com'], bypassCidrs: ['10.0.0.0/8'], proxyPush: true)), [
+      expect(meowPrependRules(const MeowSettings(bypassDomains: ['x.com'], bypassCidrs: ['10.0.0.0/8'], pushDirect: true)), [
         'DOMAIN,x.com,DIRECT',
         'IP-CIDR,10.0.0.0/8,DIRECT,no-resolve',
         ...pushDirectRules,
