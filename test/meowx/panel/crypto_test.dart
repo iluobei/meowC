@@ -10,6 +10,10 @@ void main() {
   final masterPub = base64.decode(v['masterPub'] as String);
   final ePriv = base64.decode(v['ePriv'] as String);
 
+  test('内置信任根是合法的 32 字节 Ed25519 公钥', () {
+    expect(base64.decode(MeowCrypto.trustRootB64).length, 32);
+  });
+
   test('X25519 公钥 / HKDF 方向密钥与 CryptoKit 一致', () async {
     final e = await MeowCrypto.ephemeralFromSeed(ePriv);
     expect(base64.encode((await e.extractPublicKey()).bytes), v['ePub']);

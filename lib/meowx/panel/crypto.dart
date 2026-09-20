@@ -13,7 +13,7 @@ class MeowCrypto {
   MeowCrypto._();
 
   /// 信任根公钥（Ed25519，base64）
-  static const trustRootB64 = '/cKXW8AIOPE6ChoZtXjP8N+KkIYvKLvnpTQM=';
+  static const trustRootB64 = '/cKXW8AIOPE6ChoZtXjP8N+KkIYvKLvnpLyaLPrpTQM=';
 
   static const rpcC2S = 'mmx-secure-rpc-c2s-v1';
   static const rpcS2C = 'mmx-secure-rpc-s2c-v1';
