@@ -5,6 +5,7 @@ go 1.20
 replace github.com/metacubex/mihomo => ./Clash.Meta
 
 require (
+	github.com/metacubex/http v0.1.7
 	github.com/metacubex/mihomo v0.0.0-00010101000000-000000000000
 	golang.org/x/sync v0.11.0
 )
@@ -66,7 +67,6 @@ require (
 	github.com/metacubex/gvisor v0.0.0-20260826100401-79317d808312 // indirect
 	github.com/metacubex/hkdf v0.1.0 // indirect
 	github.com/metacubex/hpke v0.1.0 // indirect
-	github.com/metacubex/http v0.1.7 // indirect
 	github.com/metacubex/jls-quic-go v0.0.0-20260727080412-732f2fc9a34d // indirect
 	github.com/metacubex/jls-tls v0.0.0-20260723084315-67adc0e2f796 // indirect
 	github.com/metacubex/jsonv2 v0.0.0-20260721082349-16b4998c8f89 // indirect

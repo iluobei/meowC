@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	"net/http"
+	http "github.com/metacubex/http"
 	"net/netip"
 	"net/url"
 	"os"
