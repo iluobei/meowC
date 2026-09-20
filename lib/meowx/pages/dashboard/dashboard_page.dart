@@ -15,6 +15,7 @@ import '../../app/meow_tab.dart';
 import '../../app/strings.dart';
 import '../../config/direct_profile.dart';
 import '../../config/meow_patch.dart';
+import '../../state/exit_ip.dart';
 import '../../state/format.dart';
 import '../../state/meow_settings.dart';
 import '../../state/status.dart';
@@ -462,13 +463,11 @@ class _ConnectionCardState extends ConsumerState<_ConnectionCard> {
           ),
           const SizedBox(height: 12),
           if (profile != null) _SubscriptionBar(profile: profile) else _EmptySubscriptionBar(),
-          if (mode != Mode.global) ...[
-            const SizedBox(height: 12),
-            _ModeSegment(
-              mode: mode,
-              onChanged: (m) => globalState.appController.changeMode(m),
-            ),
-          ],
+          const SizedBox(height: 12),
+          _ModeSegment(
+            mode: mode,
+            onChanged: (m) => globalState.appController.changeMode(m),
+          ),
         ],
       ),
     );
@@ -601,7 +600,7 @@ class _EmptySubscriptionBar extends ConsumerWidget {
   }
 }
 
-/// 「规则 | 直连」分段（global 不展示）。
+/// 「规则 | 全局 | 直连」分段。全局 = 全部流量走 GLOBAL 组选中的节点（代理页顶部会出现 GLOBAL 组）。
 class _ModeSegment extends StatelessWidget {
   const _ModeSegment({required this.mode, required this.onChanged});
   final Mode mode;
@@ -636,14 +635,45 @@ class _ModeSegment extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(color: mm.t1.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(11)),
-      child: Row(children: [seg(Mode.rule, S.modeRule), seg(Mode.direct, S.modeDirect)]),
+      child: Row(children: [seg(Mode.rule, S.modeRule), seg(Mode.global, S.modeGlobal), seg(Mode.direct, S.modeDirect)]),
     );
   }
 }
 
 /// 出口 IP：两列「国内 · 直连出口」|「国际 · 经 代理」；国旗 + 标题 caption2 + IP footnote 等宽；右上刷新。
-class _ExitIpCard extends ConsumerWidget {
+/// 连接状态或节点变化（checkIpNum）后延迟 1.5s 重查；国内列不需要连接。
+class _ExitIpCard extends ConsumerStatefulWidget {
   const _ExitIpCard();
+
+  @override
+  ConsumerState<_ExitIpCard> createState() => _ExitIpCardState();
+}
+
+class _ExitIpCardState extends ConsumerState<_ExitIpCard> {
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    ref.listenManual(isRunningProvider, (prev, next) => _schedule(running: next));
+    ref.listenManual(checkIpNumProvider, (prev, next) => _schedule(running: ref.read(isRunningProvider)));
+    WidgetsBinding.instance.addPostFrameCallback((_) => _schedule(running: ref.read(isRunningProvider), delay: Duration.zero));
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _schedule({required bool running, Duration delay = const Duration(milliseconds: 1500)}) {
+    _debounce?.cancel();
+    if (!running) ref.read(exitIpProvider.notifier).clearGlobal();
+    _debounce = Timer(delay, () {
+      if (!mounted) return;
+      unawaited(ref.read(exitIpProvider.notifier).refresh(running: ref.read(isRunningProvider)));
+    });
+  }
 
   static String flag(String code) {
     final c = code.toUpperCase();
@@ -652,68 +682,65 @@ class _ExitIpCard extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final mm = context.mm;
     final running = ref.watch(isRunningProvider);
+    final st = ref.watch(exitIpProvider);
+    Widget col(String title, IpInfo? info, {required bool loading, required String placeholder}) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: MeowFont.caption2, color: mm.t2)),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            if (info != null) ...[Text(flag(info.countryCode), style: const TextStyle(fontSize: 14)), const SizedBox(width: 5)],
+            Expanded(
+              child: Text(
+                info?.ip ?? (loading ? S.querying : placeholder),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: MeowFont.mono(size: MeowFont.footnote, color: info == null ? mm.t3 : mm.t1),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+    final busy = st.loadingDomestic || st.loadingGlobal;
     return GlassCard(
-      child: ValueListenableBuilder<NetworkDetectionState>(
-        valueListenable: DetectionState().state,
-        builder: (context, st, _) {
-          final ip = st.ipInfo;
-          final placeholder = !running ? S.disconnected : (st.isLoading ? S.querying : '—');
-          Widget col(String title, IpInfo? info) => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
             children: [
-              Text(title, style: TextStyle(fontSize: MeowFont.caption2, color: mm.t2)),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  if (info != null) ...[Text(flag(info.countryCode), style: const TextStyle(fontSize: 14)), const SizedBox(width: 5)],
-                  Expanded(
-                    child: Text(
-                      info?.ip ?? placeholder,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: MeowFont.mono(size: MeowFont.footnote, color: info == null ? mm.t3 : mm.t1),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          );
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.language_rounded, size: MeowFont.footnote + 2, color: mm.accent),
-                  const SizedBox(width: 5),
-                  Text(S.exitIp, style: TextStyle(fontSize: MeowFont.caption, color: mm.t2)),
-                  const Spacer(),
-                  InkWell(
-                    borderRadius: BorderRadius.circular(999),
-                    onTap: running ? DetectionState().manualRefresh : null,
-                    child: Padding(
-                      padding: const EdgeInsets.all(2),
-                      child: Icon(Icons.refresh_rounded, size: 16, color: running ? mm.t2 : mm.t3),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              IntrinsicHeight(
-                child: Row(
-                  children: [
-                    Expanded(child: col(S.domesticDirect, null)),
-                    Container(width: 1, margin: const EdgeInsets.symmetric(horizontal: 10), color: mm.t3.withValues(alpha: 0.2)),
-                    Expanded(child: col('${S.globalVia} 代理', ip)),
-                  ],
+              Icon(Icons.language_rounded, size: MeowFont.footnote + 2, color: mm.accent),
+              const SizedBox(width: 5),
+              Text(S.exitIp, style: TextStyle(fontSize: MeowFont.caption, color: mm.t2)),
+              const Spacer(),
+              InkWell(
+                borderRadius: BorderRadius.circular(999),
+                onTap: busy ? null : () => _schedule(running: running, delay: Duration.zero),
+                child: Padding(
+                  padding: const EdgeInsets.all(2),
+                  child: busy
+                      ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: mm.t3))
+                      : Icon(Icons.refresh_rounded, size: 16, color: mm.t2),
                 ),
               ),
             ],
-          );
-        },
+          ),
+          const SizedBox(height: 8),
+          IntrinsicHeight(
+            child: Row(
+              children: [
+                Expanded(child: col(S.domesticDirect, st.domestic, loading: st.loadingDomestic, placeholder: '—')),
+                Container(width: 1, margin: const EdgeInsets.symmetric(horizontal: 10), color: mm.t3.withValues(alpha: 0.2)),
+                Expanded(child: col('${S.globalVia} 代理', st.global, loading: st.loadingGlobal, placeholder: running ? '—' : S.disconnected)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
