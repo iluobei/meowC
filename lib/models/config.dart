@@ -164,7 +164,7 @@ abstract class AppSettingProps with _$AppSettingProps {
     @Default(false) bool silentLaunch,
     @Default(false) bool smartDelayLaunch,
     @Default(false) bool autoRun,
-    @Default(true) bool openLogs,
+    @Default(false) bool openLogs,
     @Default(true) bool closeConnections,
     @Default(defaultTestUrl) String testUrl,
     @Default(false) bool showStartSwitch,
@@ -205,7 +205,7 @@ abstract class AppSettingProps with _$AppSettingProps {
       );
     }
 
-    return props.copyWith(minimizeOnExit: true, openLogs: true);
+    return props.copyWith(minimizeOnExit: true);
   }
 }
 
@@ -424,6 +424,7 @@ abstract class Config with _$Config {
     @Default(ScriptProps()) ScriptProps scriptProps,
     @Default('') String nodeExcludeFilter,
     @Default(5000) int healthCheckTimeout,
+    @Default(MeowSettings()) MeowSettings meow,
   }) = _Config;
 
   factory Config.fromJson(Map<String, Object?> json) => _$ConfigFromJson(json);

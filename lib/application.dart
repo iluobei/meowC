@@ -11,6 +11,8 @@ import 'package:bett_box/manager/manager.dart';
 import 'package:bett_box/plugins/app.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
+import 'package:bett_box/meowx/app/meow_root.dart';
+import 'package:bett_box/meowx/theme/meow_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_displaymode/flutter_displaymode.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -40,6 +42,8 @@ class ApplicationState extends ConsumerState<Application>
     },
   );
 
+  // MeowX 主题固定系统蓝，不再用动态取色；保留给「高级」里的调色板对照
+  // ignore: unused_element
   ColorScheme _getAppColorScheme({
     required Brightness brightness,
     int? primaryColor,
@@ -237,196 +241,20 @@ class ApplicationState extends ConsumerState<Application>
                   utils.getLocaleForString(locale) ?? utils.getSystemLocale(),
               supportedLocales: AppLocalizations.delegate.supportedLocales,
               themeMode: themeProps.themeMode,
-              theme: ThemeData(
-                useMaterial3: true,
-                pageTransitionsTheme: _pageTransitionsTheme,
-                colorScheme: _getAppColorScheme(
-                  brightness: Brightness.light,
-                  primaryColor: themeProps.primaryColor,
-                ),
+              theme: meowThemeData(
+                brightness: Brightness.light,
                 fontFamily: fontFamily,
-                floatingActionButtonTheme: const FloatingActionButtonThemeData(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(20)),
-                  ),
-                  elevation: 3,
-                  hoverElevation: 5,
-                ),
-                dialogTheme: DialogThemeData(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                ),
-                bottomSheetTheme: const BottomSheetThemeData(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(28),
-                    ),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                ),
-                popupMenuTheme: const PopupMenuThemeData(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(20)),
-                  ),
-                ),
-                dividerTheme: DividerThemeData(
-                  color: _getAppColorScheme(
-                    brightness: Brightness.light,
-                    primaryColor: themeProps.primaryColor,
-                  ).outlineVariant.withValues(alpha: 0.6),
-                  thickness: 1,
-                  space: 1,
-                ),
-                inputDecorationTheme: InputDecorationTheme(
-                  border: const OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(18)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: const BorderRadius.all(Radius.circular(18)),
-                    borderSide: BorderSide(
-                      color: _getAppColorScheme(
-                        brightness: Brightness.light,
-                        primaryColor: themeProps.primaryColor,
-                      ).outlineVariant.withValues(alpha: 0.6),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: const BorderRadius.all(Radius.circular(18)),
-                    borderSide: BorderSide(
-                      color: _getAppColorScheme(
-                        brightness: Brightness.light,
-                        primaryColor: themeProps.primaryColor,
-                      ).primary,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                chipTheme: ChipThemeData(
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(16)),
-                  ),
-                  side: BorderSide(
-                    color: _getAppColorScheme(
-                      brightness: Brightness.light,
-                      primaryColor: themeProps.primaryColor,
-                    ).outlineVariant.withValues(alpha: 0.6),
-                  ),
-                ),
-                tooltipTheme: const TooltipThemeData(
-                  decoration: BoxDecoration(
-                    color: Colors.black87,
-                    borderRadius: BorderRadius.all(Radius.circular(10)),
-                  ),
-                  textStyle: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                  ),
-                ),
+                pageTransitionsTheme: _pageTransitionsTheme,
               ),
-              darkTheme: ThemeData(
-                useMaterial3: true,
-                pageTransitionsTheme: _pageTransitionsTheme,
-                colorScheme: _getAppColorScheme(
-                  brightness: Brightness.dark,
-                  primaryColor: themeProps.primaryColor,
-                ).toPureBlack(themeProps.pureBlack),
+              darkTheme: meowThemeData(
+                brightness: Brightness.dark,
                 fontFamily: fontFamily,
-                floatingActionButtonTheme: const FloatingActionButtonThemeData(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(20)),
-                  ),
-                  elevation: 3,
-                  hoverElevation: 5,
-                ),
-                dialogTheme: DialogThemeData(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                ),
-                bottomSheetTheme: const BottomSheetThemeData(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(28),
-                    ),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                ),
-                popupMenuTheme: const PopupMenuThemeData(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(20)),
-                  ),
-                ),
-                dividerTheme: DividerThemeData(
-                  color:
-                      _getAppColorScheme(
-                            brightness: Brightness.dark,
-                            primaryColor: themeProps.primaryColor,
-                          )
-                          .toPureBlack(themeProps.pureBlack)
-                          .outlineVariant
-                          .withValues(alpha: 0.45),
-                  thickness: 1,
-                  space: 1,
-                ),
-                inputDecorationTheme: InputDecorationTheme(
-                  border: const OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(18)),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: const BorderRadius.all(Radius.circular(18)),
-                    borderSide: BorderSide(
-                      color:
-                          _getAppColorScheme(
-                                brightness: Brightness.dark,
-                                primaryColor: themeProps.primaryColor,
-                              )
-                              .toPureBlack(themeProps.pureBlack)
-                              .outlineVariant
-                              .withValues(alpha: 0.45),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: const BorderRadius.all(Radius.circular(18)),
-                    borderSide: BorderSide(
-                      color: _getAppColorScheme(
-                        brightness: Brightness.dark,
-                        primaryColor: themeProps.primaryColor,
-                      ).toPureBlack(themeProps.pureBlack).primary,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                chipTheme: ChipThemeData(
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(16)),
-                  ),
-                  side: BorderSide(
-                    color:
-                        _getAppColorScheme(
-                              brightness: Brightness.dark,
-                              primaryColor: themeProps.primaryColor,
-                            )
-                            .toPureBlack(themeProps.pureBlack)
-                            .outlineVariant
-                            .withValues(alpha: 0.45),
-                  ),
-                ),
-                tooltipTheme: const TooltipThemeData(
-                  decoration: BoxDecoration(
-                    color: Colors.black87,
-                    borderRadius: BorderRadius.all(Radius.circular(10)),
-                  ),
-                  textStyle: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                  ),
-                ),
+                pageTransitionsTheme: _pageTransitionsTheme,
               ),
               home: child!,
             );
           },
-          child: const HomePage(),
+          child: const MeowRoot(),
         ),
       ),
     );

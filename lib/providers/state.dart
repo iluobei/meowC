@@ -1,6 +1,7 @@
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
+import 'package:bett_box/meowx/state/meow_settings.dart';
 import 'package:bett_box/models/models.dart';
 import 'package:bett_box/state.dart';
 import 'package:flutter/material.dart';
@@ -49,7 +50,9 @@ Config configState(Ref ref) {
   final hotKeyActions = ref.watch(hotKeyActionsProvider);
   final dav = ref.watch(appDAVSettingProvider);
   final windowProps = ref.watch(windowSettingProvider);
+  final meow = ref.watch(meowSettingProvider);
   return Config(
+    meow: meow,
     dav: dav,
     windowProps: windowProps,
     hotKeyActions: hotKeyActions,
