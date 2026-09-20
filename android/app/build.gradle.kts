@@ -31,7 +31,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.appshub.bettbox"
+        applicationId = "com.miaomiaowux.app"
         minSdk = 26
         targetSdk = 36
         versionCode = flutter.versionCode

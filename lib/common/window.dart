@@ -13,12 +13,12 @@ class Window {
     if (system.isWindows) {
       protocol.register('clash');
       protocol.register('clashmeta');
-      protocol.register('bettbox');
+      protocol.register('miaomiaowu');
     }
     await windowManager.ensureInitialized();
     WindowOptions windowOptions = WindowOptions(
       size: Size(props.width, props.height),
-      minimumSize: const Size(380, 400),
+      minimumSize: const Size(900, 600),   // MeowX 平板式三栏布局（图标栏 88 + 左栏 360 + 详情）需要的最小宽度
     );
     await windowManager.setTitleBarStyle(TitleBarStyle.hidden);
     await windowManager.setAlwaysOnTop(props.isPinned);

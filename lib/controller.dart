@@ -450,7 +450,7 @@ class AppController {
       final profile = profiles
           .where((e) => e.id == currentProfileId)
           .firstOrNull;
-      final profileName = profile?.label ?? 'Bettbox';
+      final profileName = profile?.label ?? 'MeowX';
       final speedInfo = traffic.toString();
       await vpn_service.service?.updateNotificationSpeed(
         profileName,
@@ -1154,7 +1154,7 @@ class AppController {
             ? tagName.substring(1)
             : tagName;
         downloadUrl =
-            'https://github.com/$repository/releases/download/$tagName/Bettbox-$versionWithoutV-$assetSuffix';
+            'https://github.com/$repository/releases/download/$tagName/MeowX-$versionWithoutV-$assetSuffix';
       }
 
       globalState.openUrl(downloadUrl);

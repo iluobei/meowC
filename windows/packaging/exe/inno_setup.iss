@@ -88,10 +88,10 @@ var
 begin
   PowerShellScript := 
     '$ErrorActionPreference = ''SilentlyContinue'';' + #13#10 +
-    'Write-Host "Cleaning old Wintun/Bettbox/LiClash network adapters...";' + #13#10 +
+    'Write-Host "Cleaning old Wintun/MeowX network adapters...";' + #13#10 +
     '$adapters = Get-NetAdapter | Where-Object {' + #13#10 +
-    '$_.InterfaceDescription -like "*Bettbox*" -or' + #13#10 +
-    '  $_.Name -like "*Bettbox*"' + #13#10 +
+    '$_.InterfaceDescription -like "*MeowX*" -or' + #13#10 +
+    '  $_.Name -like "*MeowX*"' + #13#10 +
     '};' + #13#10 +
     'if ($adapters) {' + #13#10 +
     '  foreach ($adapter in $adapters) {' + #13#10 +
@@ -168,8 +168,8 @@ var
   i: Integer;
 begin
   SetArrayLength(RegistryKeys, 2);
-  RegistryKeys[0] := 'Software\com.appshub.bettbox';
-  RegistryKeys[1] := 'Software\com.appshub\Bettbox';
+  RegistryKeys[0] := 'Software\com.miaomiaowux.app';
+  RegistryKeys[1] := 'Software\com.miaomiaowux\MeowX';
   
   for i := 0 to GetArrayLength(RegistryKeys)-1 do
   begin
@@ -186,8 +186,8 @@ begin
   AppDataPath := ExpandConstant('{userappdata}');
   
   SetArrayLength(UserDataPaths, 2);
-  UserDataPaths[0] := AppDataPath + '\com.appshub.bettbox';
-  UserDataPaths[1] := AppDataPath + '\com.appshub\Bettbox';
+  UserDataPaths[0] := AppDataPath + '\com.miaomiaowux.app';
+  UserDataPaths[1] := AppDataPath + '\com.miaomiaowux\MeowX';
   
   for i := 0 to GetArrayLength(UserDataPaths)-1 do
   begin
@@ -197,9 +197,9 @@ begin
     end;
   end;
   
-  if DirExists(AppDataPath + '\com.appshub') then
+  if DirExists(AppDataPath + '\com.miaomiaowux') then
   begin
-    RemoveDir(AppDataPath + '\com.appshub');
+    RemoveDir(AppDataPath + '\com.miaomiaowux');
   end;
 end;
 

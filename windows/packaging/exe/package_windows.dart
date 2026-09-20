@@ -36,7 +36,7 @@ void main(List<String> arguments) async {
   final appVersion = versionMatch.group(1)!;
   print('App Version: $appVersion');
 
-  final outputBaseName = 'Bettbox-$appVersion-windows-$desc-setup';
+  final outputBaseName = 'MeowX-$appVersion-windows-$desc-setup';
 
   // 2. Parse make_config.yaml
   final configFile = File('windows/packaging/exe/make_config.yaml');
@@ -57,10 +57,10 @@ void main(List<String> arguments) async {
   }
 
   // 4. Map variables for Inno Setup template
-  final coreExecutableName = isDev ? 'BettboxDevCore.exe' : 'BettboxCore.exe';
-  final helperExecutableName = isDev ? 'BettboxDevHelperService.exe' : 'BettboxHelperService.exe';
-  final helperServiceName = isDev ? 'BettboxDevHelperService' : 'BettboxHelperService';
-  final taskName = isDev ? 'Bettbox Dev' : 'Bettbox';
+  final coreExecutableName = isDev ? 'MeowXDevCore.exe' : 'MeowXCore.exe';
+  final helperExecutableName = isDev ? 'MeowXDevHelperService.exe' : 'MeowXHelperService.exe';
+  final helperServiceName = isDev ? 'MeowXDevHelperService' : 'MeowXHelperService';
+  final taskName = isDev ? 'MeowX Dev' : 'MeowX';
   
   // Format locales - resolve file paths to absolute to avoid Inno Setup relative path issues
   final packagingDir = path.absolute('windows/packaging/exe');
@@ -80,14 +80,14 @@ void main(List<String> arguments) async {
     'APP_ID': makeConfig['app_id'],
     'APP_NAME': makeConfig['app_name'],
     'APP_VERSION': appVersion,
-    'EXECUTABLE_NAME': makeConfig['executable_name'] ?? 'Bettbox.exe',
-    'DISPLAY_NAME': makeConfig['display_name'] ?? 'Bettbox',
+    'EXECUTABLE_NAME': makeConfig['executable_name'] ?? 'MeowX.exe',
+    'DISPLAY_NAME': makeConfig['display_name'] ?? 'MeowX',
     'PUBLISHER_NAME': makeConfig['publisher'] ?? 'appshub.cc',
     'ARCH': arch == 'arm64' ? 'arm64' : 'x64',
-    'PUBLISHER_URL': makeConfig['publisher_url'] ?? 'https://github.com/appshubcc/Bettbox',
+    'PUBLISHER_URL': makeConfig['publisher_url'] ?? 'https://github.com/iluobei/meowC',
     'CREATE_DESKTOP_ICON': true,
     'LAUNCH_AT_STARTUP': true,
-    'INSTALL_DIR_NAME': '{autopf64}\\${makeConfig['display_name'] ?? 'Bettbox'}',
+    'INSTALL_DIR_NAME': '{autopf64}\\${makeConfig['display_name'] ?? 'MeowX'}',
     'SOURCE_DIR': sourceDir,
     'OUTPUT_BASE_FILENAME': outputBaseName,
     'LOCALES': locales,

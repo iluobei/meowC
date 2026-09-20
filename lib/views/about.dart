@@ -41,7 +41,7 @@ class AboutView extends StatelessWidget {
             title: 'Github Releases',
             icon: Icons.star,
             onTap: () =>
-                globalState.openUrl('https://github.com/appshubcc/Bettbox'),
+                globalState.openUrl('https://github.com/iluobei/meowC'),
           ),
           right: _LinkGridTile(
             title: appLocalizations.checkUpdate,
@@ -51,16 +51,16 @@ class AboutView extends StatelessWidget {
         ),
         _LinkGridRow(
           left: _LinkGridTile(
-            title: 'Telegram Group',
+            title: 'Issues',
             icon: Icons.launch,
             onTap: () =>
-                globalState.openUrl('https://telegram.me/appshub_chat'),
+                globalState.openUrl('https://github.com/iluobei/meowC/issues'),
           ),
           right: _LinkGridTile(
-            title: 'Channel',
+            title: 'Bettbox',
             icon: Icons.launch,
             onTap: () =>
-                globalState.openUrl('https://telegram.me/appshub_channel'),
+                globalState.openUrl('https://github.com/appshubcc/Bettbox'),
           ),
         ),
         _LinkGridRow(

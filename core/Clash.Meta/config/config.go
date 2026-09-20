@@ -499,7 +499,7 @@ func DefaultRawConfig() *RawConfig {
 		ProxyGroup:        []map[string]any{},
 		TCPConcurrent:     false,
 		FindProcessMode:   process.FindProcessStrict,
-		GlobalUA:          "FlClash/ClashMetaForAndroid/2.11.33.Bettbox",
+		GlobalUA:          "mihomo/1.19.0 (miaomiaowu)",
 		ETagSupport:       true,
 		DNS: RawDNS{
 			Enable:         false,

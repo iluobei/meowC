@@ -18,9 +18,9 @@
 namespace {
 
 #ifdef BETTBOX_DEV
-constexpr const wchar_t kAppUserModelId[] = L"Appshub.Bettbox.Dev";
+constexpr const wchar_t kAppUserModelId[] = L"Miaomiaowu.MeowX.Dev";
 #else
-constexpr const wchar_t kAppUserModelId[] = L"Appshub.Bettbox";
+constexpr const wchar_t kAppUserModelId[] = L"Miaomiaowu.MeowX";
 #endif
 
 static std::wstring GetDumpDirectory() {
@@ -33,7 +33,7 @@ static std::wstring GetDumpDirectory() {
   if (!dir.empty() && dir.back() != L'\\') {
     dir += L'\\';
   }
-  dir += L"Bettbox\\crash_dumps";
+  dir += L"MeowX\\crash_dumps";
   return dir;
 }
 
@@ -48,7 +48,7 @@ static void EnsureDumpDirectory(const std::wstring &dir) {
   }
 }
 
-static LONG WINAPI BettboxUnhandledExceptionFilter(
+static LONG WINAPI MeowXUnhandledExceptionFilter(
     EXCEPTION_POINTERS *exception_info) {
   const std::wstring dir = GetDumpDirectory();
   if (dir.empty()) {
@@ -62,7 +62,7 @@ static LONG WINAPI BettboxUnhandledExceptionFilter(
                       .count();
 
   std::wostringstream filename;
-  filename << dir << L"\\bettbox_" << ms << L".dmp";
+  filename << dir << L"\\meowx_" << ms << L".dmp";
 
   HANDLE file = ::CreateFileW(filename.str().c_str(), GENERIC_WRITE, 0, nullptr,
                               CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -87,7 +87,7 @@ static LONG WINAPI BettboxUnhandledExceptionFilter(
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
   ::SetCurrentProcessExplicitAppUserModelID(kAppUserModelId);
-  ::SetUnhandledExceptionFilter(BettboxUnhandledExceptionFilter);
+  ::SetUnhandledExceptionFilter(MeowXUnhandledExceptionFilter);
 
   // Attach to console when present (e.g., 'flutter run') or create a
   // new console when running with a debugger.
@@ -118,9 +118,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
 #ifdef BETTBOX_DEV
-  const wchar_t *window_title = L"Bettbox Dev";
+  const wchar_t *window_title = L"MeowX Dev";
 #else
-  const wchar_t *window_title = L"Bettbox";
+  const wchar_t *window_title = L"MeowX";
 #endif
   if (!window.Create(window_title, origin, size, !is_control_command)) {
     return EXIT_FAILURE;

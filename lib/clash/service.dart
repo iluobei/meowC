@@ -46,7 +46,7 @@ class ClashService extends ClashHandlerInterface {
     if (_transportType == TransportType.unixSocket) {
       final random = Random().nextInt(10000);
       final tempDir = Directory.systemTemp.path;
-      _socketPath = p.join(tempDir, 'Bettbox_$random.sock');
+      _socketPath = p.join(tempDir, 'MeowX_$random.sock');
       commonPrint.log('Using Unix Domain Socket: $_socketPath');
     } else {
       _tcpPort = PlatformChecker.getRandomPort();

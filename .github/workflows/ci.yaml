@@ -1,0 +1,45 @@
+name: ci
+
+# 快速失败：本机不装 Flutter，这里是唯一的编译器。push / PR 都跑，几分钟内报告 analyze 与单测结果。
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: '3.44.9'
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+          cache-key: flutter-check-${{ hashFiles('**/pubspec.lock') }}
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Generate code (freezed / riverpod / json)
+        run: dart run build_runner build -d
+
+      - name: Analyze
+        # Bettbox 上游存量告警不少，先只把 error 当失败；MeowX 自己的目录另行收紧
+        run: |
+          flutter analyze --no-fatal-infos --no-fatal-warnings
+          if [ -d lib/meowx ]; then flutter analyze --fatal-warnings lib/meowx test/meowx; fi
+
+      - name: Test
+        run: flutter test

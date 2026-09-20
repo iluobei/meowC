@@ -256,7 +256,7 @@ class _ToolViewState extends ConsumerState<ToolsView> {
             const HotKeyView(),
           ),
         ),
-      if (system.isWindows)
+      if (system.isWindows && _loopbackManagerExists)
         _SearchItem(
           title: appLocalizations.loopback,
           subtitle: appLocalizations.loopbackDesc,
@@ -1385,7 +1385,7 @@ class _ToolViewState extends ConsumerState<ToolsView> {
           _ThemeItem(),
           _BackupItem(),
           if (system.isDesktop) _HotkeyItem(),
-          if (system.isWindows) _LoopbackItem(),
+          if (system.isWindows && _loopbackManagerExists) _LoopbackItem(),
           if (system.isAndroid) _AccessItem(),
           _ConfigItem(),
           _OtherSettingItem(),
@@ -1532,6 +1532,10 @@ class _HotkeyItem extends StatelessWidget {
     );
   }
 }
+
+/// MeowX 不随包分发第三方的 WindowsLoopbackManager.exe（来源不明）；用户自行放到程序目录时该项才出现。
+bool get _loopbackManagerExists =>
+    File(join(dirname(Platform.resolvedExecutable), 'WindowsLoopbackManager.exe')).existsSync();
 
 class _LoopbackItem extends StatelessWidget {
   const _LoopbackItem();
