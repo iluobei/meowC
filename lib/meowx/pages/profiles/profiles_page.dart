@@ -386,6 +386,8 @@ class _UsageCard extends ConsumerWidget {
     final total = info?.total ?? 0;
     final frac = total > 0 ? (used / total).clamp(0.0, 1.0) : 0.0;
     final expire = info?.expire ?? 0;
+    // subscription-userinfo 缺失时 Bettbox 也会给一个全 0 的 SubscriptionInfo，按「无用量信息」处理
+    final hasUsage = info != null && (total > 0 || used > 0 || expire > 0);
     final expireText = expire <= 0
         ? '未知到期'
         : isPermanentExpire(expire)
@@ -410,18 +412,23 @@ class _UsageCard extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 10),
+          if (hasUsage) ...[
+            Text(
+              total > 0 ? '${fmtSize(used)} / ${fmtSize(total)}' : '${fmtSize(used)} / ${S.unlimited}',
+              style: MeowFont.mono(size: MeowFont.title3, weight: FontWeight.w600, color: mm.t1),
+            ),
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(value: frac, minHeight: 6, backgroundColor: mm.t3.withValues(alpha: 0.15), color: frac > 0.9 ? mm.slow : mm.accent),
+            ),
+            const SizedBox(height: 8),
+          ],
           Text(
-            total > 0 ? '${fmtSize(used)} / ${fmtSize(total)}' : (info == null ? '本地配置' : '${fmtSize(used)} / ${S.unlimited}'),
-            style: MeowFont.mono(size: MeowFont.title3, weight: FontWeight.w600, color: mm.t1),
-          ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(value: frac, minHeight: 6, backgroundColor: mm.t3.withValues(alpha: 0.15), color: frac > 0.9 ? mm.slow : mm.accent),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            [if (info != null) expireText, if (profile.lastUpdateDate != null) '更新于 ${fmtRelative(profile.lastUpdateDate!)}'].join(' · '),
+            [
+              if (hasUsage) expireText else (profile.url.isEmpty ? '本地配置' : '订阅未提供用量信息'),
+              if (profile.lastUpdateDate != null) '更新于 ${fmtRelative(profile.lastUpdateDate!)}',
+            ].join(' · '),
             style: TextStyle(fontSize: MeowFont.caption, color: mm.t3),
           ),
         ],

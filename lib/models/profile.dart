@@ -155,6 +155,12 @@ extension ProfilesExt on List<Profile> {
   }
 }
 
+/// 档案名回落：title → content-disposition → URL 主机名 → 「订阅」
+String? _hostLabel(String url) {
+  final host = Uri.tryParse(url)?.host ?? '';
+  return host.isEmpty ? null : host;
+}
+
 extension ProfileExtension on Profile {
   ProfileType get type =>
       url.isEmpty == true ? ProfileType.file : ProfileType.url;
@@ -198,7 +204,7 @@ extension ProfileExtension on Profile {
     final title = subscriptionTitle(response.headers['profile-title']?.firstOrNull);
     final interval = response.headers['profile-update-interval']?.firstOrNull;
     return await copyWith(
-      label: label ?? title ?? utils.getFileNameForDisposition(disposition) ?? id,
+      label: label ?? title ?? utils.getFileNameForDisposition(disposition) ?? _hostLabel(url) ?? '订阅',
       autoUpdateDuration: interval == null ? autoUpdateDuration : subscriptionUpdateInterval(interval),
       subscriptionInfo: SubscriptionInfo.formHString(userinfo),
     ).saveFile(response.data, validate: validate);
