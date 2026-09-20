@@ -194,7 +194,7 @@ class _MeowRootState extends ConsumerState<MeowRoot> {
     return MeowBackScope(
       child: Scaffold(
         backgroundColor: mm.bg,
-        body: SafeArea(top: false, bottom: false, child: body),
+        body: SafeArea(bottom: wide, child: body),   // 状态栏下留白；手机底栏自己处理底部安全区
         bottomNavigationBar: wide
             ? null
             : NavigationBar(
