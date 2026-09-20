@@ -19,7 +19,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'controller.dart';
-import 'pages/pages.dart';
 
 class Application extends ConsumerStatefulWidget {
   const Application({super.key});

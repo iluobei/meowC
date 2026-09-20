@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -50,7 +51,9 @@ class PanelClient {
     if (cached != null) {
       _masterPub = cached;
       // 后台刷新，失败不影响本次
-      _fetchCert().then((p) => _masterPub = p).catchError((e) => commonPrint.log('cert refresh failed: $e'));
+      unawaited(_fetchCert().then((p) {
+        _masterPub = p;
+      }, onError: (Object e) => commonPrint.log('cert refresh failed: $e')));
       return cached;
     }
     return _masterPub = await _fetchCert();
