@@ -3,6 +3,7 @@ import 'package:bett_box/models/models.dart';
 import 'package:bett_box/pages/pages.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -498,6 +499,11 @@ class _ImportCardState extends ConsumerState<_ImportCard> {
     setState(() => _busy = true);
     try {
       await globalState.appController.addProfileFormURL(url);
+      // 与 iOS 一致：手动导入的订阅直接成为当前档（Bettbox 只在没有当前档时才切）
+      final added = ref.read(profilesProvider).where((p) => p.url == url).firstOrNull;
+      if (added != null && ref.read(currentProfileIdProvider) != added.id) {
+        ref.read(currentProfileIdProvider.notifier).value = added.id;
+      }
       _url.clear();
     } catch (e) {
       widget.onError(e);
