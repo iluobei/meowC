@@ -83,6 +83,10 @@ class _MeowRootState extends ConsumerState<MeowRoot> {
       if (added != null && mounted) {
         ref.read(profilesProvider.notifier).value = [...profiles, added];
       }
+      // 没有任何当前档时以直连档为当前：首页电源键可用，用量卡的菜单可切换
+      if (mounted && ref.read(currentProfileIdProvider) == null) {
+        ref.read(currentProfileIdProvider.notifier).value = directProfileId;
+      }
     } catch (e) {
       commonPrint.log('ensureDirectProfile failed: $e');
     }

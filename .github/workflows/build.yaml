@@ -21,7 +21,8 @@ on:
 
 env:
   IS_TAG: ${{ startsWith(github.ref, 'refs/tags/v') }}
-  IS_STABLE: ${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
+  # 手动构建（main）与正式 tag 都算 stable；带 '-' 的 tag（如 v0.2.0-pre1）才是 pre（右上角 PRE 角标）
+  IS_STABLE: ${{ !contains(github.ref_name, '-') }}
   IS_PRERELEASE: ${{ startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-') }}
   FLUTTER_VERSION: '3.44.9'
   GO_VERSION: '1.25.x'
