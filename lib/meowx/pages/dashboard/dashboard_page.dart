@@ -193,11 +193,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               Expanded(
                 child: Column(
                   children: [
-                    SizedBox(height: _wideRowHeight, child: _row(upload, download)),
+                    SizedBox(height: _wideRowHeight, child: _row(upload, download, bounded: true)),
                     const SizedBox(height: _gap),
-                    SizedBox(height: _wideRowHeight, child: _row(proxyCard, directCard)),
+                    SizedBox(height: _wideRowHeight, child: _row(proxyCard, directCard, bounded: true)),
                     const SizedBox(height: _gap),
-                    SizedBox(height: _wideRowHeight, child: _row(memoryCard, dnsCard)),
+                    SizedBox(height: _wideRowHeight, child: _row(memoryCard, dnsCard, bounded: true)),
                     const SizedBox(height: _gap),
                     const SizedBox(height: _wideRowHeight, child: exitIp),
                   ],
@@ -210,10 +210,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     );
   }
 
-  Widget _row(Widget a, Widget b) => Row(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [Expanded(child: a), const SizedBox(width: _gap), Expanded(child: b)],
-  );
+  /// 两卡并排、等高。compact 下 ListView 的高度无界，Row 的 stretch 会把子项撑成无限高
+  /// （release 不断言，表现为该行之后整页空白），所以套 IntrinsicHeight 取两卡中较高者；wide 下外层已给定高度。
+  Widget _row(Widget a, Widget b, {bool bounded = false}) {
+    final row = Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [Expanded(child: a), const SizedBox(width: _gap), Expanded(child: b)],
+    );
+    return bounded ? row : IntrinsicHeight(child: row);
+  }
 }
 
 /// 指标卡：图标 footnote + 标题 caption t2 / 数值 title2 semibold 等宽 / 说明 caption2 t3，padding 14。
