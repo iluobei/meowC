@@ -1,5 +1,9 @@
 # Miscellaneous
 *.md
+# 许可证 / 说明文件必须入库（GPL §5 要求保留改动记录）
+!README.md
+!NOTICE.md
+!CHANGES-FROM-BETTBOX.md
 !/README.md
 !/readme/*.md
 !/SIGNING-POLICY.md
