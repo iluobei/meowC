@@ -511,6 +511,7 @@ class _SubscriptionBar extends ConsumerWidget {
     final used = (info?.upload ?? 0) + (info?.download ?? 0);
     final total = info?.total ?? 0;
     final frac = total > 0 ? (used / total).clamp(0.0, 1.0) : 0.0;
+    final hasUsage = info != null && (total > 0 || used > 0 || (info.expire) > 0);
     final profiles = withDirectProfileLast(ref.watch(profilesProvider));
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -550,22 +551,25 @@ class _SubscriptionBar extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              Text(
-                total > 0 ? '${fmtSize(used)} / ${fmtSize(total)}' : (info == null ? '' : '${fmtSize(used)} / ${S.unlimited}'),
-                style: MeowFont.mono(size: MeowFont.caption, color: mm.t2),
-              ),
+              if (hasUsage)
+                Text(
+                  total > 0 ? '${fmtSize(used)} / ${fmtSize(total)}' : '${fmtSize(used)} / ${S.unlimited}',
+                  style: MeowFont.mono(size: MeowFont.caption, color: mm.t2),
+                ),
             ],
           ),
-          const SizedBox(height: 8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(2),
-            child: LinearProgressIndicator(
-              value: frac,
-              minHeight: 4,
-              backgroundColor: mm.t3.withValues(alpha: 0.15),
-              color: frac > 0.9 ? mm.slow : mm.accent,
+          if (hasUsage) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: frac,
+                minHeight: 4,
+                backgroundColor: mm.t3.withValues(alpha: 0.15),
+                color: frac > 0.9 ? mm.slow : mm.accent,
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
