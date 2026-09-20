@@ -25,6 +25,7 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   StreamSubscription<Object?>? _subscription;
   bool _permissionDenied = false;
   bool _permissionChecking = false;
+  bool _permissionRequested = false;   // 只主动申请一次，拒绝后回到设置引导
 
   @override
   void initState() {
@@ -76,7 +77,18 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
       _permissionChecking = true;
     });
     
-    final granted = await app.hasCameraPermission();
+    var granted = await app.hasCameraPermission();
+    if (!granted && !_permissionRequested) {
+      // MeowX：原逻辑只查不申请，没授权过的机器会直接落到「权限被拒」页。
+      // mobile_scanner 的 start() 会弹系统权限请求，弹完再查一次。
+      _permissionRequested = true;
+      try {
+        await controller.start();
+      } catch (e) {
+        commonPrint.log('Camera permission request: $e');
+      }
+      granted = await app.hasCameraPermission();
+    }
     if (!mounted) return;
     
     setState(() {
