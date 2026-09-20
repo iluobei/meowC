@@ -8,6 +8,7 @@ import 'package:bett_box/clash/clash.dart';
 import 'package:bett_box/common/theme.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/l10n/l10n.dart';
+import 'package:bett_box/meowx/config/meow_patch.dart';
 import 'package:bett_box/plugins/app.dart';
 import 'package:bett_box/plugins/service.dart';
 import 'package:bett_box/providers/providers.dart';
@@ -800,6 +801,9 @@ class GlobalState {
         originalHosts: originalHosts,
       );
     }
+
+    // MeowX：DNS 模式（跟随订阅 / Redir-Host / Fake-IP）只改 dns.enhanced-mode，在 Bettbox 的 dns 覆写之后生效
+    applyMeowDns(rawConfig, config.meow.dnsMode);
 
     if (rawConfig['dns'] != null &&
         rawConfig['dns']['fallback-filter'] != null) {

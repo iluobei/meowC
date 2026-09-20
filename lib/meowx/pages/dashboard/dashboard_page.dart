@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/meow_root.dart';
 import '../../app/meow_tab.dart';
 import '../../app/strings.dart';
+import '../../config/meow_patch.dart';
 import '../../state/format.dart';
 import '../../state/meow_settings.dart';
 import '../../state/status.dart';
@@ -290,11 +291,8 @@ class _TotalTrafficValue extends ConsumerWidget {
 class _DnsModeCard extends ConsumerWidget {
   const _DnsModeCard();
 
-  static String _effective(MeowDnsMode mode, String? declared) => switch (mode) {
-    MeowDnsMode.fakeIp => S.dnsFakeIp,
-    MeowDnsMode.redirHost => S.dnsRedirHost,
-    MeowDnsMode.follow => declared == 'fake-ip' ? S.dnsFakeIp : S.dnsRedirHost,
-  };
+  static String _effective(MeowDnsMode mode, String? declared) =>
+      effectiveDnsMode(mode, declared) == 'fake-ip' ? S.dnsFakeIp : S.dnsRedirHost;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/strings.dart';
+import '../../config/meow_patch.dart';
 import '../../state/meow_settings.dart';
 import '../../state/status.dart';
 import '../../theme/glass_card.dart';
@@ -41,8 +42,10 @@ class SettingsPage extends ConsumerWidget {
               values: MeowDnsMode.values,
               label: (v) => v.label,
               onChanged: (v) {
+                final declared = ref.read(declaredDnsModeProvider);
+                final changed = effectiveDnsMode(meow.dnsMode, declared) != effectiveDnsMode(v, declared);
                 ref.read(meowSettingProvider.notifier).updateState((s) => s.copyWith(dnsMode: v));
-                if (ref.read(isRunningProvider)) globalState.appController.applyProfileDebounce();
+                if (changed && ref.read(isRunningProvider)) globalState.appController.applyProfileDebounce();
               },
             ),
             _PickerRow<LatencyMode>(
