@@ -35,6 +35,7 @@ class MeowRoot extends ConsumerStatefulWidget {
 class _MeowRootState extends ConsumerState<MeowRoot> {
   late final ProviderSubscription<PageLabel> _pageSub;
   late final ProviderSubscription<String?> _profileSub;
+  late final ProviderSubscription<bool> _initSub;
   late final ProviderSubscription<(String, String, bool)> _realtimeSub;
   RealtimeClient? _realtime;
 
@@ -58,7 +59,10 @@ class _MeowRootState extends ConsumerState<MeowRoot> {
         c.changeMode(Mode.rule);
       }
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_ensureDirect()));
+    // 等 Bettbox 把偏好加载完（isInit）再补内置直连档，否则会被随后加载的配置覆盖
+    _initSub = ref.listenManual(initProvider, (prev, next) {
+      if (next) unawaited(_ensureDirect());
+    }, fireImmediately: true);
     _pageSub = ref.listenManual(currentPageLabelProvider, (prev, next) {
       if (prev == next) return;
       final tab = MeowTab.fromPageLabel(next);
@@ -88,6 +92,7 @@ class _MeowRootState extends ConsumerState<MeowRoot> {
   void dispose() {
     _pageSub.close();
     _profileSub.close();
+    _initSub.close();
     _realtimeSub.close();
     _realtime?.stop();
     super.dispose();
