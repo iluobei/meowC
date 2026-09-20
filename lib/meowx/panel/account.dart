@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/models/models.dart';
 import 'package:bett_box/providers/providers.dart';
@@ -89,6 +91,7 @@ class AccountActions {
     try {
       final list = await _client().subscriptions(token);
       ref.read(remoteSubsProvider.notifier).state = AsyncValue.data(list);
+      unawaited(refreshMedals());
     } catch (e, st) {
       commonPrint.log('refreshSubscriptions failed: $e');
       ref.read(remoteSubsProvider.notifier).state = AsyncValue.error(e, st);

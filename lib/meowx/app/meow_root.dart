@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/providers/providers.dart';
@@ -6,6 +8,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../config/direct_profile.dart';
 import '../pages/connections/connections_page.dart';
 import '../pages/dashboard/dashboard_page.dart';
 import '../pages/profiles/profiles_page.dart';
@@ -31,6 +34,7 @@ class MeowRoot extends ConsumerStatefulWidget {
 
 class _MeowRootState extends ConsumerState<MeowRoot> {
   late final ProviderSubscription<PageLabel> _pageSub;
+  late final ProviderSubscription<String?> _profileSub;
   late final ProviderSubscription<(String, String, bool)> _realtimeSub;
   RealtimeClient? _realtime;
 
@@ -45,6 +49,16 @@ class _MeowRootState extends ConsumerState<MeowRoot> {
       (prev, next) => _syncRealtime(next),
       fireImmediately: true,
     );
+    _profileSub = ref.listenManual(currentProfileIdProvider, (prev, next) {
+      // 切到内置直连档 → mode=direct；从它切走 → 恢复 rule
+      final c = globalState.appController;
+      if (isDirectProfile(next) && ref.read(patchClashConfigProvider).mode != Mode.direct) {
+        c.changeMode(Mode.direct);
+      } else if (isDirectProfile(prev) && !isDirectProfile(next) && ref.read(patchClashConfigProvider).mode == Mode.direct) {
+        c.changeMode(Mode.rule);
+      }
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => unawaited(_ensureDirect()));
     _pageSub = ref.listenManual(currentPageLabelProvider, (prev, next) {
       if (prev == next) return;
       final tab = MeowTab.fromPageLabel(next);
@@ -58,9 +72,22 @@ class _MeowRootState extends ConsumerState<MeowRoot> {
     });
   }
 
+  Future<void> _ensureDirect() async {
+    try {
+      final profiles = ref.read(profilesProvider);
+      final added = await ensureDirectProfile(profiles);
+      if (added != null && mounted) {
+        ref.read(profilesProvider.notifier).value = [...profiles, added];
+      }
+    } catch (e) {
+      commonPrint.log('ensureDirectProfile failed: $e');
+    }
+  }
+
   @override
   void dispose() {
     _pageSub.close();
+    _profileSub.close();
     _realtimeSub.close();
     _realtime?.stop();
     super.dispose();

@@ -35,8 +35,9 @@ void main() {
       final raw = <String, dynamic>{};
       applyMeowAuthentication(raw, const MeowSettings(localProxy: MeowLocalProxy(username: 'u', password: 'p')));
       expect(raw['authentication'], ['u:p']);
-      applyMeowAuthentication(raw = {}, const MeowSettings());
-      expect(raw.containsKey('authentication'), isFalse);
+      final none = <String, dynamic>{};
+      applyMeowAuthentication(none, const MeowSettings());
+      expect(none.containsKey('authentication'), isFalse);
     });
   });
 

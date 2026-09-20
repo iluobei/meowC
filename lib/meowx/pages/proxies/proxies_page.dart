@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/meow_tab.dart';
 import '../../app/strings.dart';
+import '../../panel/account.dart';
 import '../../state/meow_settings.dart';
 import '../../state/status.dart';
 import '../../theme/badges.dart';
@@ -464,6 +465,35 @@ class _NodeGrid extends ConsumerWidget {
 }
 
 /// 节点格：协议色点 + 名；行 2 副标题 + 延迟胶囊（点 = 测该成员）；底 primary 0.05 圆角 13；选中 accent 描边 + 发光。
+/// 三网回程明细弹窗。
+void _showMedal(BuildContext context, NodeMedal medal) {
+  showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text('${medal.name} · ${medal.medal == 'gold' ? '金牌' : '银牌'}回程'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final r in medal.routes)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  MedalBadge(r.gold ? 'gold' : 'silver', size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('${r.carrier}${r.region != null ? '（${r.region}）' : ''}：${r.routeType}')),
+                ],
+              ),
+            ),
+          if (medal.routes.isEmpty) const Text('暂无明细'),
+        ],
+      ),
+      actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('好'))],
+    ),
+  );
+}
+
 class _NodeCell extends ConsumerWidget {
   const _NodeCell({
     required this.proxy,
@@ -492,6 +522,7 @@ class _NodeCell extends ConsumerWidget {
     final dotColor = builtin != null ? mm.good : (nested ? mm.accent : style.color);
     final subtitle = builtin ?? (nested ? '${S.nestedGroup} · ${groupBadge(proxy.type, mm).label}' : (meta?.securitySubtitle.isNotEmpty == true ? '${style.label} · ${meta!.securitySubtitle}' : style.label));
     final delay = ref.watch(getDelayProvider(proxyName: proxy.name, testUrl: group.testUrl));
+    final medal = ref.watch(medalsProvider.select((m) => m[proxy.name]));
     final compact = size == NodeCardSize.compact;
     final testable = !const {'REJECT', 'REJECT-DROP', 'PASS'}.contains(proxy.name.toUpperCase());
 
@@ -526,6 +557,7 @@ class _NodeCell extends ConsumerWidget {
                   ),
                 ),
                 if (nested) Icon(Icons.layers_rounded, size: 14, color: mm.t3),
+                if (medal != null) ...[const SizedBox(width: 4), MedalBadge(medal.medal, size: compact ? 12 : 14, onTap: () => _showMedal(context, medal))],
                 if (compact && testable) ...[
                   const SizedBox(width: 4),
                   GestureDetector(

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/strings.dart';
+import '../../config/direct_profile.dart';
 import '../../panel/account.dart';
 import '../../panel/client.dart';
 import '../../state/format.dart';
@@ -459,7 +460,7 @@ class _ProfileMenu extends ConsumerWidget {
       itemBuilder: (_) => [
         for (final p in others) PopupMenuItem(value: 'switch:${p.id}', child: Text('切换到 ${p.label ?? p.id}', maxLines: 1, overflow: TextOverflow.ellipsis)),
         if (profile.url.isNotEmpty) const PopupMenuItem(value: 'refresh', child: Text('刷新')),
-        PopupMenuItem(value: 'delete', child: Text('删除', style: TextStyle(color: mm.slow))),
+        if (!isDirectProfile(profile.id)) PopupMenuItem(value: 'delete', child: Text('删除', style: TextStyle(color: mm.slow))),
       ],
     );
   }
@@ -575,7 +576,7 @@ class _ProfileList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mm = context.mm;
-    final profiles = ref.watch(profilesProvider);
+    final profiles = withDirectProfileLast(ref.watch(profilesProvider));
     final currentId = ref.watch(currentProfileIdProvider);
     if (profiles.isEmpty) return const SizedBox.shrink();
     return GlassCard(

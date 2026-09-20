@@ -27,6 +27,7 @@ import 'package:yaml/yaml.dart';
 
 import 'common/archive.dart' show restoreBackupFiles;
 import 'common/common.dart';
+import 'meowx/config/direct_profile.dart';
 import 'meowx/panel/account.dart';
 import 'models/models.dart';
 import 'views/profiles/override_profile.dart';
@@ -467,6 +468,7 @@ class AppController {
   }
 
   Future<void> deleteProfile(String id) async {
+    if (isDirectProfile(id)) return;   // MeowX 内置直连档不可删
     _ref.read(profilesProvider.notifier).deleteProfileById(id);
     await clearEffect(id);
     if (globalState.config.currentProfileId == id) {

@@ -112,3 +112,20 @@ String? builtinSubtitle(String name) => switch (name.toUpperCase()) {
   'GLOBAL' => S.builtinGlobal,
   _ => null,
 };
+
+/// 节点奖牌（服务端判定）：金 / 银。
+class MedalBadge extends StatelessWidget {
+  const MedalBadge(this.medal, {super.key, this.size = 14, this.onTap});
+  final String medal;
+  final double size;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = medal == 'gold' ? const Color(0xFFD4A017) : const Color(0xFF9AA0A6);
+    return GestureDetector(
+      onTap: onTap,
+      child: Icon(Icons.workspace_premium_rounded, size: size, color: color),
+    );
+  }
+}

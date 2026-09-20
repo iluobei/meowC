@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/meow_root.dart';
 import '../../app/meow_tab.dart';
 import '../../app/strings.dart';
+import '../../config/direct_profile.dart';
 import '../../config/meow_patch.dart';
 import '../../state/format.dart';
 import '../../state/meow_settings.dart';
@@ -505,7 +506,7 @@ class _SubscriptionBar extends ConsumerWidget {
     final used = (info?.upload ?? 0) + (info?.download ?? 0);
     final total = info?.total ?? 0;
     final frac = total > 0 ? (used / total).clamp(0.0, 1.0) : 0.0;
-    final profiles = ref.watch(profilesProvider);
+    final profiles = withDirectProfileLast(ref.watch(profilesProvider));
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(color: mm.t1.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(12)),
