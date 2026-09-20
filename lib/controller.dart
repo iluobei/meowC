@@ -27,6 +27,7 @@ import 'package:yaml/yaml.dart';
 
 import 'common/archive.dart' show restoreBackupFiles;
 import 'common/common.dart';
+import 'meowx/panel/account.dart';
 import 'models/models.dart';
 import 'views/profiles/override_profile.dart';
 
@@ -1472,6 +1473,14 @@ class AppController {
         return;
       }
       addProfileFormURL(url);
+    }, loginCallBack: (uri) {
+      final link = parseLoginLink(uri);
+      if (link == null) return;
+      _ref.read(accountActionsProvider).loginWithCode(host: link.base, code: link.code).then((_) {
+        toProfiles();
+      }, onError: (Object e) {
+        globalState.showMessage(title: '登录', message: TextSpan(text: e.toString()));
+      });
     });
   }
 

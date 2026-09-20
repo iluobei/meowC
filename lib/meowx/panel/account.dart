@@ -118,11 +118,11 @@ class AccountActions {
     }
   }
 
+  /// 切换当前档案：改 currentProfileId 即可，Bettbox 的 ClashManager 监听 needSetup 后自动重载
   void _switchTo(String id) {
     if (ref.read(currentProfileIdProvider) != id) {
       ref.read(currentProfileIdProvider.notifier).value = id;
     }
-    globalState.appController.applyProfileDebounce(silence: true);
   }
 
   Future<void> refreshMedals() async {

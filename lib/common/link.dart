@@ -16,12 +16,18 @@ class LinkManager {
   }
 
   Future<void> initAppLinksListen(
-    Function(String url) installConfigCallBack,
-  ) async {
+    Function(String url) installConfigCallBack, {
+    Function(Uri uri)? loginCallBack,
+  }) async {
     commonPrint.log('initAppLinksListen');
     destroy();
     subscription = _appLinks.uriLinkStream.listen((uri) {
       commonPrint.log('onAppLink: $uri');
+      // MeowX：miaomiaowu://login?host=<主控>&code=<一次性码>
+      if (uri.scheme == 'miaomiaowu' && uri.host == 'login') {
+        loginCallBack?.call(uri);
+        return;
+      }
       if (uri.host == 'install-config') {
         final parameters = uri.queryParameters;
         final url = parameters['url'];
