@@ -57,6 +57,8 @@ dependencies:
   flutter_svg: ^2.2.4
   xml: ^6.6.1
   crypto: ^3.0.7
+  cryptography: ^2.7.0        # MeowX 面板加密通道：X25519 / HKDF / ChaCha20-Poly1305 / Ed25519（纯 Dart，两端一致）
+  web_socket_channel: ^3.0.0  # MeowX 面板实时通道
   google_nav_bar: ^5.0.7
   wakelock_plus: ^1.4.0
   flutter_spinkit: ^5.2.2

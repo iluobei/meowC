@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:bett_box/clash/core.dart';
 import 'package:bett_box/common/common.dart';
+import 'package:bett_box/meowx/config/subscription_headers.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -193,8 +194,12 @@ extension ProfileExtension on Profile {
     final response = await request.getFileResponseForUrl(url);
     final disposition = response.headers['content-disposition']?.firstOrNull;
     final userinfo = response.headers['subscription-userinfo']?.firstOrNull;
+    // MeowX：妙妙屋X 主控还会给 profile-title（可 base64:）与 profile-update-interval（小时）
+    final title = subscriptionTitle(response.headers['profile-title']?.firstOrNull);
+    final interval = response.headers['profile-update-interval']?.firstOrNull;
     return await copyWith(
-      label: label ?? utils.getFileNameForDisposition(disposition) ?? id,
+      label: label ?? title ?? utils.getFileNameForDisposition(disposition) ?? id,
+      autoUpdateDuration: interval == null ? autoUpdateDuration : subscriptionUpdateInterval(interval),
       subscriptionInfo: SubscriptionInfo.formHString(userinfo),
     ).saveFile(response.data, validate: validate);
   }
