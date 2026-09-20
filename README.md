@@ -22,6 +22,8 @@ Windows 安装包未做代码签名，SmartScreen 提示时选「更多信息 �
 - `ci.yaml`：push / PR 时 `flutter analyze` + `flutter test`（`lib/meowx/` 与 `test/meowx/` 以 `--fatal-warnings` 收紧）
 - `build.yaml`：打 `v*` tag 自动出包并发布；Actions 页面也可手动触发（`gh workflow run build.yaml -f platform=all -f android_arch=arm64`）
 
+macOS（Apple Silicon）本机出 Android 包：`./scripts/setup-android-env.sh`（一次性，约 5 GB；加 `--emulator` 顺带装模拟器）→ `./scripts/build-android.sh`（约 6 分钟，产物在 `dist/`）。
+
 本地构建与 Bettbox 相同：`flutter pub get` → `dart run build_runner build -d` → `dart setup.dart <android|windows> --arch <arm64|amd64>`（Android 需要 `ANDROID_NDK`；Windows 只能在 Windows 上构建，需要 Visual Studio、Inno Setup 6）。Go 核心可单独验证：`cd core && CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -tags with_gvisor .`。
 
 ## 目录
