@@ -40,8 +40,10 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
 
   void _handleBarcode(BarcodeCapture barcodeCapture) {
     final barcode = barcodeCapture.barcodes.first;
-    if (barcode.type == BarcodeType.url) {
-      Navigator.pop<String>(context, barcode.rawValue);
+    // MeowX：登录码是 miaomiaowu:// 自定义 scheme，ML Kit 会判成 text 而不是 url，原样交给调用方解析
+    final raw = barcode.rawValue;
+    if (raw != null && raw.isNotEmpty) {
+      Navigator.pop<String>(context, raw);
     } else {
       Navigator.pop(context);
     }
@@ -223,7 +225,17 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
                 ),
                 padding: const EdgeInsets.all(16),
                 iconSize: 32.0,
-                onPressed: globalState.appController.addProfileFormQrCode,
+                // MeowX：相册选图的结果也交回给打开扫码页的调用方（登录 / 导入各自解析）
+                onPressed: () async {
+                  try {
+                    final raw = await picker.pickerQRCodeRaw();
+                    if (raw != null && context.mounted) {
+                      Navigator.pop<String>(context, raw);
+                    }
+                  } catch (e) {
+                    globalState.showNotifier(e.toString());
+                  }
+                },
                 icon: const Icon(Icons.photo_camera_back),
               ),
             ),

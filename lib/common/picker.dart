@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:bett_box/common/common.dart';
+import 'package:collection/collection.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -74,6 +75,24 @@ class Picker {
       await file.writeAsBytes(bytes);
     }
     return savePath;
+  }
+
+  /// 相册选图识别二维码，原样返回内容（不限定 URL；MeowX 登录码是 miaomiaowu:// 自定义 scheme）。
+  Future<String?> pickerQRCodeRaw() async {
+    final xFile = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (xFile == null) {
+      return null;
+    }
+    final controller = MobileScannerController();
+    final capture = await controller.analyzeImage(
+      xFile.path,
+      formats: [BarcodeFormat.qrCode],
+    );
+    final result = capture?.barcodes.firstOrNull?.rawValue;
+    if (result == null || result.isEmpty) {
+      throw appLocalizations.pleaseUploadValidQrcode;
+    }
+    return result;
   }
 
   Future<String?> pickerConfigQRCode() async {
