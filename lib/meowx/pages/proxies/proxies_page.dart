@@ -38,6 +38,40 @@ List<Proxy> _allLeafProxies(List<Group> groups) {
   return out;
 }
 
+/// 组当前选中的节点，沿选中链解析到叶子（组里选的是另一个组就继续往下找）。
+final _currentLeafProvider = Provider.autoDispose.family<String, String>((ref, groupName) {
+  var name = groupName;
+  final seen = <String>{};
+  while (seen.add(name)) {
+    final next = ref.watch(getSelectedProxyNameProvider(name));
+    if (next == null || next.isEmpty) break;   // 不是组（已到叶子）或还没有选中
+    name = next;
+  }
+  return name == groupName ? '' : name;
+});
+
+/// 组当前选中节点（叶子）的回程奖牌 + 解锁徽标，放在组行 / 组头的延迟胶囊前。
+class _CurrentBadges extends ConsumerWidget {
+  const _CurrentBadges({required this.groupName});
+  final String groupName;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final leaf = ref.watch(_currentLeafProvider(groupName));
+    if (leaf.isEmpty) return const SizedBox.shrink();
+    final medal = ref.watch(medalsProvider.select((m) => m[leaf]));
+    final unlocks = ref.watch(unlocksProvider.select((m) => m[leaf]));
+    if (medal == null && unlocks == null) return const SizedBox.shrink();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (medal != null) ...[MedalBadge(medal, size: 14), const SizedBox(width: 4)],
+        if (unlocks != null) ...[UnlockBadge(unlocks, size: 14), const SizedBox(width: 4)],
+      ],
+    );
+  }
+}
+
 const _cardRadius = 26.0;
 const _cardPadding = 14.0;
 const _gridSpacing = 9.0;
@@ -393,6 +427,7 @@ class _GroupTabsState extends ConsumerState<_GroupTabs> {
       children: [
         SizedBox(
           height: 38,
+          width: double.infinity,   // 标签少时也靠左，不被 Column 居中
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -562,6 +597,7 @@ class _TabGroupHead extends ConsumerWidget {
               style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2),
             ),
           ),
+          _CurrentBadges(groupName: group.name),
           if (selectedName.isNotEmpty)
             LatencyChip(
               ref.watch(
@@ -821,6 +857,7 @@ class _GroupHead extends ConsumerWidget {
                       ),
                     ),
                   ),
+                  _CurrentBadges(groupName: group.name),
                   if (selectedName.isNotEmpty)
                     LatencyChip(
                       ref.watch(
@@ -917,6 +954,7 @@ class _GroupRow extends ConsumerWidget {
                               ),
                             ),
                           ),
+                          _CurrentBadges(groupName: group.name),
                           if (selectedName.isNotEmpty)
                             LatencyChip(
                               ref.watch(
