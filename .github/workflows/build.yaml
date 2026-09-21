@@ -209,6 +209,29 @@ jobs:
         run: |
           dart windows/packaging/exe/package_windows.dart --arch ${ARCH} --env ${{ env.IS_STABLE == 'true' && 'stable' || 'pre' }}
 
+      # 便携版：Release 目录 + `portable` 标记文件（有它数据就放程序目录的 data/），打成 zip。
+      # 不含 helper 服务注册：TUN 模式会走 UAC 提权启动核心；系统代理模式无需管理员。
+      - name: Package Portable (zip)
+        shell: pwsh
+        run: |
+          $ver = (Select-String -Path pubspec.yaml -Pattern '^version:\s*([^+\s]+)').Matches[0].Groups[1].Value
+          $src = "build/windows/x64/runner/Release"
+          $stage = "portable/MeowX"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item -Path "$src/*" -Destination $stage -Recurse -Force
+          New-Item -ItemType File -Force -Path "$stage/portable" | Out-Null
+          New-Item -ItemType Directory -Force -Path dist-portable | Out-Null
+          Compress-Archive -Path $stage -DestinationPath "dist-portable/MeowX-$ver-windows-$env:ARCH-portable.zip" -Force
+          Get-ChildItem dist-portable
+
+      - name: Upload Portable
+        uses: actions/upload-artifact@v7
+        with:
+          name: MeowX-windows-${{ env.ARCH }}-portable
+          path: ./dist-portable/*
+          archive: false
+          overwrite: true
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v7
         with:

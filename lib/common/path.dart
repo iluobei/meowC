@@ -16,7 +16,12 @@ class AppPath {
   AppPath._internal() {
     appDirPath = join(dirname(Platform.resolvedExecutable));
     getApplicationSupportDirectory().then((value) {
-      if (system.isWindows && AppIdentity.isDev) {
+      // MeowX 便携版：程序目录里有 `portable` 标记文件 → 数据全放在程序目录的 data/ 下，不写 AppData
+      if (system.isWindows && File(join(appDirPath, 'portable')).existsSync()) {
+        final dir = Directory(join(appDirPath, 'data'));
+        dir.createSync(recursive: true);
+        dataDir.complete(dir);
+      } else if (system.isWindows && AppIdentity.isDev) {
         dataDir.complete(
           Directory(join(value.parent.path, AppIdentity.dataDirName)),
         );

@@ -31,3 +31,7 @@
 - `lib/common/picker.dart`：新增 `pickerQRCodeRaw()`（相册取码不做 URL 校验）。
 - `lib/models/profile.dart`：档案名回落顺序 title → content-disposition → URL 主机名 → 「订阅」。
 - `.github/workflows/build.yaml`：手动构建按 stable 出包（不带 PRE 角标）。
+
+## 2026-09-21 · Windows 便携版
+- `lib/common/path.dart`：程序目录存在 `portable` 标记文件时，数据目录改为程序目录下的 `data/`。
+- `build.yaml`：Windows job 额外产出 `MeowX-<ver>-windows-amd64-portable.zip`。
