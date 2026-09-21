@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../app/strings.dart';
+import '../panel/models.dart';
 import '../state/latency.dart';
+import 'popover.dart';
 import 'tokens.dart';
 
 /// 延迟胶囊：caption2 等宽 bold，底同色 0.15；null →「—」灰；≤0 →「超时」灰。
@@ -113,19 +115,77 @@ String? builtinSubtitle(String name) => switch (name.toUpperCase()) {
   _ => null,
 };
 
-/// 节点奖牌（服务端判定）：金 / 银。
+/// 节点奖牌（服务端判定）：金 / 银；点按弹三网回程明细，点其他地方关闭。
 class MedalBadge extends StatelessWidget {
-  const MedalBadge(this.medal, {super.key, this.size = 14, this.onTap});
-  final String medal;
+  const MedalBadge(this.medal, {super.key, this.size = 14, this.tappable = true});
+  final NodeMedal medal;
   final double size;
-  final VoidCallback? onTap;
+  final bool tappable;
+
+  static Color color(String medal) => medal == 'gold' ? const Color(0xFFD4A017) : const Color(0xFF9AA0A6);
 
   @override
   Widget build(BuildContext context) {
-    final color = medal == 'gold' ? const Color(0xFFD4A017) : const Color(0xFF9AA0A6);
-    return GestureDetector(
-      onTap: onTap,
-      child: Icon(Icons.workspace_premium_rounded, size: size, color: color),
+    final icon = Icon(Icons.workspace_premium_rounded, size: size, color: color(medal.medal));
+    if (!tappable) return icon;
+    return Builder(
+      builder: (ctx) => GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => showAnchoredPopover(ctx, builder: (_) => MedalDetail(medal: medal)),
+        child: Padding(padding: const EdgeInsets.all(2), child: icon),
+      ),
+    );
+  }
+}
+
+/// 三网回程明细：每个运营商一行。
+class MedalDetail extends StatelessWidget {
+  const MedalDetail({super.key, required this.medal});
+  final NodeMedal medal;
+
+  static String carrierCN(String c) => switch (c.toLowerCase()) {
+    'telecom' || 'ct' => '电信',
+    'unicom' || 'cu' => '联通',
+    'mobile' || 'cm' => '移动',
+    _ => c,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final mm = context.mm;
+    final gold = medal.medal == 'gold';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              MedalBadge(medal, size: 16, tappable: false),
+              const SizedBox(width: 6),
+              Expanded(child: Text(medal.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: MeowFont.footnote, fontWeight: FontWeight.w600, color: mm.t1))),
+              const SizedBox(width: 8),
+              Text(gold ? '金牌' : '银牌', style: TextStyle(fontSize: MeowFont.caption2, fontWeight: FontWeight.w600, color: gold ? mm.orange : mm.t3)),
+            ],
+          ),
+          Divider(height: 14, color: mm.t3.withValues(alpha: 0.2)),
+          if (medal.routes.isEmpty)
+            Text('暂无三网回程数据', style: TextStyle(fontSize: MeowFont.caption, color: mm.t2))
+          else
+            for (final r in medal.routes)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    SizedBox(width: 34, child: Text(carrierCN(r.carrier), style: TextStyle(fontSize: MeowFont.caption, fontWeight: FontWeight.w500, color: mm.t1))),
+                    Expanded(child: Text('${r.routeType}${r.region != null ? '（${r.region}）' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: MeowFont.mono(size: MeowFont.caption2, color: mm.t2))),
+                    if (r.gold) Icon(Icons.star_rounded, size: 13, color: mm.orange),
+                  ],
+                ),
+              ),
+        ],
+      ),
     );
   }
 }

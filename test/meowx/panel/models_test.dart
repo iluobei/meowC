@@ -1,4 +1,5 @@
 import 'package:bett_box/meowx/panel/models.dart';
+import 'package:bett_box/meowx/panel/unlock_catalog.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -46,6 +47,38 @@ void main() {
     expect(m['HK-1']?.routes.single.routeType, 'CN2 GIA');
     expect(m['JP-1']?.medal, 'silver');
     expect(NodeMedal.parse({'success': false}), isEmpty);
+  });
+
+  test('功能开关解析', () {
+    expect(PanelFeatures.parse({'success': true, 'return_routes': true, 'unlock_check': false}).returnRoutes, isTrue);
+    expect(PanelFeatures.parse({'success': true, 'return_routes': true, 'unlock_check': false}).unlockCheck, isFalse);
+    expect(PanelFeatures.parse({'success': false}).returnRoutes, isFalse);
+    expect(PanelFeatures.parse('x').unlockCheck, isFalse);
+  });
+
+  test('解锁结论解析 / 分组 / 文案', () {
+    final m = NodeUnlocks.parse({'success': true, 'nodes': [
+      {'name': 'HK-1', 'unlocks': [
+        {'service': 'openai', 'status': 'yes', 'region': 'HK'},
+        {'service': 'netflix', 'status': 'originals_only'},
+        {'service': 'apple', 'status': 'yes', 'region': 'HK'},
+        {'service': 'claude', 'status': 'banned'},
+        {'service': 'unknown_svc', 'status': 'no'},
+      ]},
+      {'name': 'empty', 'unlocks': []},
+    ]});
+    expect(m.keys, ['HK-1']);
+    final n = m['HK-1']!;
+    expect(n.unlockedCount, 3);
+    final g = n.grouped;
+    expect(g[UnlockCategory.streaming]!.map((e) => e.service), ['netflix']);
+    expect(g[UnlockCategory.ai]!.map((e) => e.service), ['openai', 'claude']);   // 目录顺序
+    expect(g[UnlockCategory.other]!.map((e) => e.service), ['apple', 'unknown_svc']);
+    expect(n.entries.firstWhere((e) => e.service == 'openai').statusText, '已解锁 · HK');
+    expect(n.entries.firstWhere((e) => e.service == 'apple').statusText, 'HK');     // 信息类只显示地区
+    expect(n.entries.firstWhere((e) => e.service == 'netflix').statusText, '仅自制剧');
+    expect(n.entries.firstWhere((e) => e.service == 'claude').statusText, 'IP 被封禁');
+    expect(NodeUnlocks.parse({'success': true, 'nodes': []}), isEmpty);
   });
 
   test('登录深链', () {

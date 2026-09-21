@@ -15,6 +15,7 @@ import '../../state/meow_settings.dart';
 import '../../state/status.dart';
 import '../../theme/badges.dart';
 import '../../theme/glass_card.dart';
+import '../../theme/unlock_badge.dart';
 import '../../theme/page_title.dart';
 import '../../theme/tokens.dart';
 import '../../theme/two_pane.dart';
@@ -47,6 +48,22 @@ class ProxiesPage extends ConsumerStatefulWidget {
 
 class _ProxiesPageState extends ConsumerState<ProxiesPage> {
   bool _testingAll = false;
+
+  @override
+  void initState() {
+    super.initState();
+    ref.listenManual(meowTabProvider, (prev, next) {
+      if (next == MeowTab.proxies) _refreshExtras();
+    }, fireImmediately: true);
+  }
+
+  void _refreshExtras() {
+    if (demoExtras) {
+      seedDemoExtras(ref, _allLeafProxies(ref.read(currentGroupsStateProvider).value).map((p) => p.name).toList());
+      return;
+    }
+    if (ref.read(isLoggedInProvider)) ref.read(accountActionsProvider).refreshExtras(ifStale: true);
+  }
 
   Future<void> _testAll(List<Group> groups) async {
     if (_testingAll) return;
@@ -465,35 +482,6 @@ class _NodeGrid extends ConsumerWidget {
 }
 
 /// 节点格：协议色点 + 名；行 2 副标题 + 延迟胶囊（点 = 测该成员）；底 primary 0.05 圆角 13；选中 accent 描边 + 发光。
-/// 三网回程明细弹窗。
-void _showMedal(BuildContext context, NodeMedal medal) {
-  showDialog<void>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text('${medal.name} · ${medal.medal == 'gold' ? '金牌' : '银牌'}回程'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (final r in medal.routes)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  MedalBadge(r.gold ? 'gold' : 'silver', size: 16),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text('${r.carrier}${r.region != null ? '（${r.region}）' : ''}：${r.routeType}')),
-                ],
-              ),
-            ),
-          if (medal.routes.isEmpty) const Text('暂无明细'),
-        ],
-      ),
-      actions: [TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('好'))],
-    ),
-  );
-}
-
 class _NodeCell extends ConsumerWidget {
   const _NodeCell({
     required this.proxy,
@@ -523,6 +511,7 @@ class _NodeCell extends ConsumerWidget {
     final subtitle = builtin ?? (nested ? '${S.nestedGroup} · ${groupBadge(proxy.type, mm).label}' : (meta?.securitySubtitle.isNotEmpty == true ? '${style.label} · ${meta!.securitySubtitle}' : style.label));
     final delay = ref.watch(getDelayProvider(proxyName: proxy.name, testUrl: group.testUrl));
     final medal = ref.watch(medalsProvider.select((m) => m[proxy.name]));
+    final unlocks = ref.watch(unlocksProvider.select((m) => m[proxy.name]));
     final compact = size == NodeCardSize.compact;
     final testable = !const {'REJECT', 'REJECT-DROP', 'PASS'}.contains(proxy.name.toUpperCase());
 
@@ -557,7 +546,8 @@ class _NodeCell extends ConsumerWidget {
                   ),
                 ),
                 if (nested) Icon(Icons.layers_rounded, size: 14, color: mm.t3),
-                if (medal != null) ...[const SizedBox(width: 4), MedalBadge(medal.medal, size: compact ? 12 : 14, onTap: () => _showMedal(context, medal))],
+                if (medal != null) ...[const SizedBox(width: 2), MedalBadge(medal, size: compact ? 12 : 14)],
+                if (unlocks != null) ...[const SizedBox(width: 2), UnlockBadge(unlocks, size: compact ? 12 : 14)],
                 if (compact && testable) ...[
                   const SizedBox(width: 4),
                   GestureDetector(

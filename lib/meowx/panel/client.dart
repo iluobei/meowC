@@ -185,6 +185,15 @@ class PanelClient {
     return RemoteSubscription.parseList(r.containsKey('data') && r['data'] is List && r.length == 1 ? r['data'] : r);
   }
 
+  /// 主控功能开关（回程金牌 / 解锁检测）。
+  Future<PanelFeatures> features(String token) async {
+    return PanelFeatures.parse(await rpc('/user/features', method: 'GET', token: token));
+  }
+
+  Future<Map<String, NodeUnlocks>> unlocks(String token) async {
+    return NodeUnlocks.parse(await rpc('/user/unlocks', method: 'GET', token: token));
+  }
+
   Future<Map<String, NodeMedal>> returnRoutes(String token) async {
     final r = await rpc('/user/return-routes', method: 'GET', token: token);
     return NodeMedal.parse(r);

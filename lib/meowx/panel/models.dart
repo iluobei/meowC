@@ -1,4 +1,5 @@
 // 面板返回的数据模型与纯解析函数（可单测）。
+import 'unlock_catalog.dart';
 
 /// 「我的订阅」条目。
 class RemoteSubscription {
@@ -138,4 +139,74 @@ class NodeMedal {
   if (!host.startsWith('http://') && !host.startsWith('https://')) host = 'https://$host';
   if (host.endsWith('/')) host = host.substring(0, host.length - 1);
   return (base: host, code: code);
+}
+
+/// 主控开了哪些「节点附加信息」功能：没开的既不调接口也不显示图标。
+class PanelFeatures {
+  const PanelFeatures({this.returnRoutes = false, this.unlockCheck = false});
+  final bool returnRoutes, unlockCheck;
+
+  static PanelFeatures parse(dynamic json) {
+    if (json is! Map || json['success'] != true) return const PanelFeatures();
+    return PanelFeatures(returnRoutes: json['return_routes'] == true, unlockCheck: json['unlock_check'] == true);
+  }
+}
+
+/// 单项解锁结论。
+class UnlockEntry {
+  const UnlockEntry({required this.service, required this.status, this.region});
+  final String service, status;
+  final String? region;
+
+  UnlockServiceMeta get meta => unlockServiceMeta(service);
+  bool get unlocked => isUnlocked(status);
+
+  /// 行内状态文本：普通服务「已解锁 · HK」；信息类服务 yes 时只显示 region。
+  String get statusText {
+    if (meta.info && status == 'yes') return (region?.isNotEmpty ?? false) ? region! : '—';
+    final label = unlockStatusMeta(status).label;
+    return (region?.isNotEmpty ?? false) ? '$label · $region' : label;
+  }
+}
+
+/// 一个节点的解锁结论（按目录顺序）。
+class NodeUnlocks {
+  const NodeUnlocks({required this.name, required this.entries});
+  final String name;
+  final List<UnlockEntry> entries;
+
+  int get unlockedCount => entries.where((e) => e.unlocked).length;
+
+  /// 按分类分组，组内保持目录顺序；目录里没有的 key 归「其他」。
+  Map<UnlockCategory, List<UnlockEntry>> get grouped {
+    final sorted = [...entries]..sort((a, b) => _orderOf(a.service).compareTo(_orderOf(b.service)));
+    final out = {for (final c in UnlockCategory.values) c: <UnlockEntry>[]};
+    for (final e in sorted) {
+      out[e.meta.category]!.add(e);
+    }
+    return out;
+  }
+
+  static int _orderOf(String key) {
+    final i = unlockServices.indexWhere((s) => s.key == key);
+    return i == -1 ? 999 : i;
+  }
+
+  static Map<String, NodeUnlocks> parse(dynamic json) {
+    if (json is! Map || json['success'] != true || json['nodes'] is! List) return const {};
+    final out = <String, NodeUnlocks>{};
+    for (final n in json['nodes'] as List) {
+      if (n is! Map) continue;
+      final name = n['name']?.toString() ?? '';
+      final list = n['unlocks'];
+      if (name.isEmpty || list is! List) continue;
+      final entries = [
+        for (final u in list)
+          if (u is Map && (u['service']?.toString().isNotEmpty ?? false))
+            UnlockEntry(service: u['service'].toString(), status: u['status']?.toString() ?? 'failed', region: u['region']?.toString()),
+      ];
+      if (entries.isNotEmpty) out[name] = NodeUnlocks(name: name, entries: entries);
+    }
+    return out;
+  }
 }

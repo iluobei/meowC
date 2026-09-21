@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../state/meow_settings.dart';
 import 'client.dart';
 import 'models.dart';
+import 'unlock_catalog.dart';
 
 export 'models.dart';
 
@@ -24,8 +25,14 @@ final isLoggedInProvider = Provider<bool>((ref) => ref.watch(meowSettingProvider
 /// 「我的订阅」列表。
 final remoteSubsProvider = StateProvider<AsyncValue<List<RemoteSubscription>>>((ref) => const AsyncValue.data([]));
 
+/// 主控功能开关：未开启的功能不调接口、不显示图标。
+final panelFeaturesProvider = StateProvider<PanelFeatures>((ref) => const PanelFeatures());
+
 /// 节点奖牌（服务端判定）。
 final medalsProvider = StateProvider<Map<String, NodeMedal>>((ref) => const {});
+
+/// 节点解锁结论（服务端判定）。
+final unlocksProvider = StateProvider<Map<String, NodeUnlocks>>((ref) => const {});
 
 /// 正在导入的远端订阅（按名字）。
 final importingSubProvider = StateProvider<String?>((ref) => null);
@@ -82,6 +89,9 @@ class AccountActions {
     _update((a) => a.copyWith(token: '', nickname: '', avatarUrl: ''));
     ref.read(remoteSubsProvider.notifier).state = const AsyncValue.data([]);
     ref.read(medalsProvider.notifier).state = const {};
+    ref.read(unlocksProvider.notifier).state = const {};
+    ref.read(panelFeaturesProvider.notifier).state = const PanelFeatures();
+    _extrasAt = null;
   }
 
   Future<void> refreshSubscriptions() async {
@@ -91,7 +101,7 @@ class AccountActions {
     try {
       final list = await _client().subscriptions(token);
       ref.read(remoteSubsProvider.notifier).state = AsyncValue.data(list);
-      unawaited(refreshMedals());
+      unawaited(refreshExtras());
     } catch (e, st) {
       commonPrint.log('refreshSubscriptions failed: $e');
       ref.read(remoteSubsProvider.notifier).state = AsyncValue.error(e, st);
@@ -129,15 +139,75 @@ class AccountActions {
     }
   }
 
-  Future<void> refreshMedals() async {
+  DateTime? _extrasAt;
+
+  /// 节点附加信息（奖牌 / 解锁）：先问主控开了哪些，没开的不调接口、清空本地数据。
+  Future<void> refreshExtras({bool ifStale = false}) async {
     final token = _account.token;
     if (token.isEmpty) return;
+    if (ifStale && _extrasAt != null && DateTime.now().difference(_extrasAt!) < const Duration(minutes: 10)) return;
+    _extrasAt = DateTime.now();
+    final client = _client();
+    PanelFeatures features;
     try {
-      ref.read(medalsProvider.notifier).state = await _client().returnRoutes(token);
+      features = await client.features(token);
     } catch (e) {
-      commonPrint.log('returnRoutes failed: $e');
+      commonPrint.log('features failed: $e');
+      return;
+    }
+    ref.read(panelFeaturesProvider.notifier).state = features;
+    if (features.returnRoutes) {
+      try {
+        ref.read(medalsProvider.notifier).state = await client.returnRoutes(token);
+      } catch (e) {
+        commonPrint.log('returnRoutes failed: $e');
+      }
+    } else {
+      ref.read(medalsProvider.notifier).state = const {};
+    }
+    if (features.unlockCheck) {
+      try {
+        ref.read(unlocksProvider.notifier).state = await client.unlocks(token);
+      } catch (e) {
+        commonPrint.log('unlocks failed: $e');
+      }
+    } else {
+      ref.read(unlocksProvider.notifier).state = const {};
     }
   }
 }
 
 final accountActionsProvider = Provider<AccountActions>((ref) => AccountActions(ref));
+
+/// `--dart-define=MEOWX_DEMO_EXTRAS=true`：不登录也给节点塞一批假奖牌 / 解锁结论，用来截图核对界面。
+const demoExtras = bool.fromEnvironment('MEOWX_DEMO_EXTRAS');
+
+void seedDemoExtras(WidgetRef ref, List<String> names) {
+  if (ref.read(unlocksProvider).isNotEmpty || names.isEmpty) return;
+  final medals = <String, NodeMedal>{};
+  final unlocks = <String, NodeUnlocks>{};
+  for (var i = 0; i < names.length; i++) {
+    final n = names[i];
+    if (i % 2 == 0) {
+      medals[n] = NodeMedal(name: n, medal: i % 4 == 0 ? 'gold' : 'silver', routes: [
+        ReturnRoute(carrier: 'telecom', region: '广东', routeType: i % 4 == 0 ? 'CN2 GIA' : '163', gold: i % 4 == 0),
+        const ReturnRoute(carrier: 'unicom', routeType: '9929', gold: true),
+        const ReturnRoute(carrier: 'mobile', routeType: 'CMI', gold: false),
+      ]);
+    }
+    if (i % 3 != 2) {
+      final statuses = ['yes', 'no', 'originals_only', 'banned', 'failed'];
+      unlocks[n] = NodeUnlocks(name: n, entries: [
+        for (var k = 0; k < unlockServices.length; k++)
+          UnlockEntry(
+            service: unlockServices[k].key,
+            status: unlockServices[k].info ? 'yes' : statuses[(i + k) % statuses.length],
+            region: (i + k) % 2 == 0 ? ['HK', 'US', 'JP', 'SG'][(i + k) % 4] : null,
+          ),
+      ]);
+    }
+  }
+  ref.read(panelFeaturesProvider.notifier).state = const PanelFeatures(returnRoutes: true, unlockCheck: true);
+  ref.read(medalsProvider.notifier).state = medals;
+  ref.read(unlocksProvider.notifier).state = unlocks;
+}
