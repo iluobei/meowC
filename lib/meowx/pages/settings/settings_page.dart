@@ -77,6 +77,10 @@ class SettingsPage extends ConsumerWidget {
               label: (v) => v.label,
               onChanged: (v) {
                 ref.read(meowSettingProvider.notifier).updateState((s) => s.copyWith(latencyMode: v));
+                // HTTPS 延迟 = mihomo unified-delay（去掉握手）；真连接 = 关掉它。TCPing 不涉及
+                if (v != LatencyMode.tcping) {
+                  ref.read(patchClashConfigProvider.notifier).updateState((c) => c.copyWith(unifiedDelay: v == LatencyMode.url));
+                }
                 ref.read(delayDataSourceProvider.notifier).value = {};   // 三档口径不同，旧值作废
               },
             ),

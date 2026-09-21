@@ -567,13 +567,13 @@ class _NodeCell extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: mm.t1.withValues(alpha: 0.05),
+          // 选中：淡强调色底 + 描边。不加发光——格子底是半透明的，阴影会透上来把整格染蓝、盖住延迟
+          color: selected ? mm.accent.withValues(alpha: 0.10) : mm.t1.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(13),
           border: Border.all(
             color: selected ? mm.accent : mm.t1.withValues(alpha: 0.1),
             width: selected ? 1.5 : 1,
           ),
-          boxShadow: selected ? [BoxShadow(color: mm.accent.withValues(alpha: 0.5), blurRadius: 10)] : null,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

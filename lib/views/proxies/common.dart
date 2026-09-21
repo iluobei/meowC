@@ -101,6 +101,7 @@ Future<void> proxyDelayTest(Proxy proxy, [String? testUrl]) async {
   }
   await _testProxyDelay(DelayTestTarget(name: state.proxyName, url: url));
   appController.addSortNum();
+  appController.updateGroupsDebounce();   // MeowX：fallback / url-test 的当前节点随测速结果变化
 }
 
 Future<Delay> _testProxyDelay(DelayTestTarget target) {
@@ -184,6 +185,7 @@ Future<void> delayTest(
       await Future.wait(batchTasks.map((task) => task()));
     }
     appController.addSortNum();
+    appController.updateGroupsDebounce();
   }
 
   if (groupName == null || groupName.isEmpty) {

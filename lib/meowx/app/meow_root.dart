@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
+import 'package:bett_box/models/models.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:collection/collection.dart';
@@ -77,6 +78,11 @@ class _MeowRootState extends ConsumerState<MeowRoot> {
   }
 
   Future<void> _ensureDirect() async {
+    // 测速方式与 mihomo unified-delay 对齐（HTTPS 延迟 = true，真连接 = false）
+    final mode = ref.read(meowSettingProvider).latencyMode;
+    if (mode != LatencyMode.tcping && ref.read(patchClashConfigProvider).unifiedDelay != (mode == LatencyMode.url)) {
+      ref.read(patchClashConfigProvider.notifier).updateState((c) => c.copyWith(unifiedDelay: mode == LatencyMode.url));
+    }
     try {
       final profiles = ref.read(profilesProvider);
       final added = await ensureDirectProfile(profiles);

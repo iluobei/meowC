@@ -7,9 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
-	http "github.com/metacubex/http"
-	"net/netip"
-	"net/url"
 	"os"
 	"regexp"
 	"runtime"
@@ -20,13 +17,12 @@ import (
 	"time"
 
 	"github.com/metacubex/mihomo/adapter"
-	"github.com/metacubex/mihomo/component/ca"
-	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
 	"github.com/metacubex/mihomo/common/observable"
 	"github.com/metacubex/mihomo/common/utils"
 	"github.com/metacubex/mihomo/common/yaml"
 	"github.com/metacubex/mihomo/component/age"
+	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/mmdb"
 	"github.com/metacubex/mihomo/component/resolver"
 	"github.com/metacubex/mihomo/component/updater"
@@ -292,13 +288,13 @@ func handleAsyncTestDelay(paramsString string, fn func(string)) {
 }
 
 // meowTestDelay：MeowX 三档测速。
-//   ""/"url"  HTTPS 延迟：与 mihomo unified-delay 同口径（第一次请求建链，第二次请求计时），但不翻全局开关，
-//             不影响 url-test 组自己的健康检查
-//   "url-full" 真连接延迟：走 mihomo 原生 URLTest（含建链握手的一次 HEAD 往返；以全局 unified-delay 配置为准）
-//   "tcping"   只对节点入口 server:port 做一次 TCP 连接计时（经 mihomo dialer，Android 自动 protect、桌面自动绑接口）
+//
+//	""/"url"/"url-full"  走 mihomo 原生 URLTest：它会更新节点的 alive / 延迟历史，fallback 与 url-test 组据此回切；
+//	                     「HTTPS 延迟」与「真连接延迟」的差别由全局 unified-delay 决定（Dart 侧随设置切换）
+//	"tcping"             只对节点入口 server:port 做一次 TCP 连接计时（经 mihomo dialer，Android 自动 protect、桌面自动绑接口）；
+//	                     不是 URL 测试，不改 alive 状态
 func meowTestDelay(ctx context.Context, proxy constant.Proxy, testUrl string, expectedStatus utils.IntRanges[uint16], mode string) (uint16, error) {
-	switch mode {
-	case "tcping":
+	if mode == "tcping" {
 		addr := proxy.Addr()
 		if addr == "" {
 			return 0, fmt.Errorf("proxy %s has no server address", proxy.Name())
@@ -310,98 +306,8 @@ func meowTestDelay(ctx context.Context, proxy constant.Proxy, testUrl string, ex
 		}
 		_ = conn.Close()
 		return uint16(time.Since(start).Milliseconds()), nil
-	case "url-full":
-		return proxy.URLTest(ctx, testUrl, expectedStatus)
-	default:
-		return meowUnifiedURLTest(ctx, proxy, testUrl, expectedStatus)
 	}
-}
-
-// meowUnifiedURLTest：同一条代理连接上发两次 HEAD，只计第二次（去掉 TCP/TLS/协议握手），等价 mihomo unified-delay=true。
-func meowUnifiedURLTest(ctx context.Context, proxy constant.Proxy, testUrl string, expectedStatus utils.IntRanges[uint16]) (uint16, error) {
-	addr, err := urlToMetadata(testUrl)
-	if err != nil {
-		return 0, err
-	}
-	instance, err := proxy.DialContext(ctx, &addr)
-	if err != nil {
-		return 0, err
-	}
-	defer func() { _ = instance.Close() }()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, testUrl, nil)
-	if err != nil {
-		return 0, err
-	}
-	tlsConfig, err := ca.GetTLSConfig(ca.Option{})
-	if err != nil {
-		return 0, err
-	}
-	transport := &http.Transport{
-		DialContext: func(context.Context, string, string) (net.Conn, error) {
-			return instance, nil
-		},
-		MaxIdleConns:          100,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-		TLSClientConfig:       tlsConfig,
-	}
-	client := http.Client{
-		Timeout:   30 * time.Second,
-		Transport: transport,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-	defer client.CloseIdleConnections()
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	_ = resp.Body.Close()
-
-	start := time.Now()
-	resp, err = client.Do(req)
-	if err != nil {
-		return 0, err
-	}
-	_ = resp.Body.Close()
-	if !expectedStatus.Check(uint16(resp.StatusCode)) {
-		return 0, fmt.Errorf("unexpected status %d", resp.StatusCode)
-	}
-	return uint16(time.Since(start).Milliseconds()), nil
-}
-
-// urlToMetadata：与 mihomo adapter 同逻辑，把测速 URL 变成 DialContext 需要的 Metadata。
-func urlToMetadata(rawURL string) (addr constant.Metadata, err error) {
-	u, err := url.Parse(rawURL)
-	if err != nil {
-		return
-	}
-	port := u.Port()
-	if port == "" {
-		switch u.Scheme {
-		case "https":
-			port = "443"
-		case "http":
-			port = "80"
-		default:
-			err = fmt.Errorf("%s scheme not Support", rawURL)
-			return
-		}
-	}
-	p, err := strconv.ParseUint(port, 10, 16)
-	if err != nil {
-		return
-	}
-	addr = constant.Metadata{
-		Host:    u.Hostname(),
-		DstIP:   netip.Addr{},
-		DstPort: uint16(p),
-	}
-	return
+	return proxy.URLTest(ctx, testUrl, expectedStatus)
 }
 
 func handleGetConnections() string {
