@@ -78,7 +78,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
 
     if (!wide) {
       return ListView(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+        padding: EdgeInsets.fromLTRB(16, 0, 16, 24 + MediaQuery.paddingOf(context).bottom),
         children: [
           const PageTitle(S.profiles),
           const SizedBox(height: 12),

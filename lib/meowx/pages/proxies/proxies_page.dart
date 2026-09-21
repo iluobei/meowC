@@ -285,7 +285,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
           ),
           for (final g in groups)
             ..._groupSlivers(g, size == NodeCardSize.large ? 1 : 2),
-          const SliverPadding(padding: EdgeInsets.only(bottom: 28)),
+          SliverPadding(padding: EdgeInsets.only(bottom: 12 + MediaQuery.paddingOf(context).bottom)),
         ],
       );
     }
@@ -480,7 +480,7 @@ class _GroupTabsState extends ConsumerState<_GroupTabs> {
                     ),
                   ),
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+                    padding: EdgeInsets.fromLTRB(16, 0, 16, 12 + MediaQuery.paddingOf(context).bottom),
                     sliver: SliverToBoxAdapter(
                       child: Container(
                         height: _cardPadding,

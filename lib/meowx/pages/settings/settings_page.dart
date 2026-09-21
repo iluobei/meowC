@@ -16,6 +16,7 @@ import '../../theme/page_title.dart';
 import '../../theme/tokens.dart';
 import '../../theme/two_pane.dart';
 import 'overrides_pages.dart';
+import 'proxy_apps_page.dart';
 
 const _testUrlPresets = {
   'Cloudflare': 'https://cp.cloudflare.com/generate_204',
@@ -43,11 +44,12 @@ class SettingsPage extends ConsumerWidget {
     final testUrl = ref.watch(appSettingProvider.select((s) => s.testUrl));
     final openLogs = ref.watch(appSettingProvider.select((s) => s.openLogs));
     final blockQuic = ref.watch(vpnSettingProvider.select((s) => s.disableQuic));
+    final accessControl = ref.watch(vpnSettingProvider.select((s) => s.accessControl));
     final clash = ref.watch(patchClashConfigProvider);
     final localIp = ref.watch(localIpProvider);
 
     final body = ListView(
-      padding: EdgeInsets.fromLTRB(wide ? 0 : 16, wide ? 16 : 0, 16, 40),
+      padding: EdgeInsets.fromLTRB(wide ? 0 : 16, wide ? 16 : 0, 16, 24 + MediaQuery.paddingOf(context).bottom),
       children: [
         const PageTitle(S.settings),
         const SizedBox(height: 12),
@@ -127,6 +129,15 @@ class SettingsPage extends ConsumerWidget {
                 _reloadIfRunning(ref);
               },
             ),
+            if (system.isAndroid)
+              _Row(
+                icon: Icons.apps_rounded,
+                color: mm.accent,
+                title: '代理应用',
+                subtitle: '只让勾选的应用走代理',
+                trailing: _chevron(mm, accessControl.enable ? '${accessControl.acceptList.length}' : '关'),
+                onTap: () => BaseNavigator.push(context, const ProxyAppsPage()),
+              ),
             _Row(
               icon: Icons.alt_route_rounded,
               color: mm.pur,

@@ -20,6 +20,7 @@ import '../panel/client.dart';
 import '../panel/realtime.dart';
 import '../state/meow_settings.dart';
 import '../state/status.dart';
+import '../theme/glass_tab_bar.dart';
 import '../theme/icon_rail.dart';
 import '../theme/tokens.dart';
 import 'meow_tab.dart';
@@ -220,18 +221,15 @@ class _MeowRootState extends ConsumerState<MeowRoot> {
     return MeowBackScope(
       child: Scaffold(
         backgroundColor: mm.bg,
-        body: SafeArea(bottom: wide, child: body),   // 状态栏下留白；手机底栏自己处理底部安全区
+        // 手机：底栏是悬浮的玻璃胶囊，内容从它下面滚过去（extendBody），各页自己把 MediaQuery.padding.bottom 加进底部留白
+        extendBody: !wide,
+        body: SafeArea(bottom: wide, child: body),   // 状态栏下留白
         bottomNavigationBar: wide
             ? null
-            : NavigationBar(
-                selectedIndex: tab.index,
-                height: 64,
-                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                onDestinationSelected: (i) => _select(MeowTab.values[i]),
-                destinations: [
-                  for (final t in MeowTab.values)
-                    NavigationDestination(icon: Icon(t.icon), label: t.label),
-                ],
+            : GlassTabBar(
+                selected: tab.index,
+                onSelect: (i) => _select(MeowTab.values[i]),
+                items: [for (final t in MeowTab.values) GlassTabItem(icon: t.icon, label: t.label)],
               ),
       ),
     );

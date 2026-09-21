@@ -123,15 +123,15 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
       icon: Icons.arrow_upward_rounded,
       title: S.upload,
       color: context.mm.accent,
-      value: _TotalTrafficValue(up: true),
-      desc: '${S.session} · ${S.upload}',
+      value: const _RateValue(up: true),
+      descWidget: const _SessionTotal(up: true),
     );
     final download = _MetricCard(
       icon: Icons.arrow_downward_rounded,
       title: S.download,
       color: context.mm.down,
-      value: _TotalTrafficValue(up: false),
-      desc: '${S.session} · ${S.download}',
+      value: const _RateValue(up: false),
+      descWidget: const _SessionTotal(up: false),
     );
     final proxyCard = _MetricCard(
       icon: Icons.alt_route_rounded,
@@ -167,7 +167,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
     if (!wide) {
       return ListView(
-        padding: const EdgeInsets.fromLTRB(_pad, 0, _pad, _pad + 24),
+        padding: EdgeInsets.fromLTRB(_pad, 0, _pad, _pad + 8 + MediaQuery.paddingOf(context).bottom),
         children: _spaced([
           title,
           _pair(shows(HomeCard.upload) ? upload : null, shows(HomeCard.download) ? download : null),
@@ -304,7 +304,8 @@ class _MetricCard extends StatelessWidget {
     required this.title,
     required this.color,
     required this.value,
-    required this.desc,
+    this.desc = '',
+    this.descWidget,
     this.onTap,
   });
 
@@ -313,6 +314,9 @@ class _MetricCard extends StatelessWidget {
   final Color color;
   final Widget value;
   final String desc;
+
+  /// 需要实时刷新的说明（如「会话 12 MB」）；给了就不用 [desc]。
+  final Widget? descWidget;
   final VoidCallback? onTap;
 
   @override
@@ -340,17 +344,22 @@ class _MetricCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           DefaultTextStyle(
-            style: MeowFont.mono(size: MeowFont.title2, weight: FontWeight.w600, color: mm.t1),
+            style: TextStyle(
+              fontSize: MeowFont.title2,
+              fontWeight: FontWeight.w600,
+              color: mm.t1,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             child: value,
           ),
           const SizedBox(height: 4),
-          Text(
-            desc,
+          DefaultTextStyle(
+            style: TextStyle(fontSize: MeowFont.caption2, color: mm.t3),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontSize: MeowFont.caption2, color: mm.t3),
+            child: descWidget ?? Text(desc),
           ),
         ],
       ),
@@ -358,14 +367,28 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-class _TotalTrafficValue extends ConsumerWidget {
-  const _TotalTrafficValue({required this.up});
+/// 实时速率（上传 / 下载卡的大字）。
+class _RateValue extends ConsumerWidget {
+  const _RateValue({required this.up});
+  final bool up;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final list = ref.watch(trafficsProvider).list;
+    final last = list.isEmpty ? null : list.last;
+    return Text(fmtRate((up ? last?.up.value : last?.down.value) ?? 0));
+  }
+}
+
+/// 「会话 X」：本次连接累计流量。
+class _SessionTotal extends ConsumerWidget {
+  const _SessionTotal({required this.up});
   final bool up;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final total = ref.watch(totalTrafficProvider);
-    return Text(fmtSize(up ? total.up.value : total.down.value));
+    return Text('${S.session} ${fmtSize(up ? total.up.value : total.down.value)}');
   }
 }
 
@@ -588,8 +611,15 @@ class _SpeedCard extends ConsumerWidget {
     final recent = traffics.length > 60 ? traffics.sublist(traffics.length - 60) : traffics;
     final up = [for (final t in recent) t.up.value.toDouble()];
     final down = [for (final t in recent) t.down.value.toDouble()];
-    final last = recent.isEmpty ? null : recent.last;
     final peak = [...up, ...down].fold<double>(0, (m, v) => v > m ? v : m);
+    Widget legend(String text, Color color) => Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 8, height: 8, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text(text, style: TextStyle(fontSize: MeowFont.caption2, color: mm.t2)),
+      ],
+    );
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -597,21 +627,27 @@ class _SpeedCard extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.speed_rounded, size: MeowFont.footnote + 2, color: mm.accent),
+              Icon(Icons.monitor_heart_outlined, size: MeowFont.footnote + 2, color: mm.accent),
               const SizedBox(width: 5),
-              Text('↑ ${fmtRate(last?.up.value ?? 0)}', style: MeowFont.mono(size: MeowFont.caption, weight: FontWeight.w600, color: mm.accent)),
-              const SizedBox(width: 10),
-              Text('↓ ${fmtRate(last?.down.value ?? 0)}', style: MeowFont.mono(size: MeowFont.caption, weight: FontWeight.w600, color: mm.down)),
+              Text('网速 · 近 60 秒', style: TextStyle(fontSize: MeowFont.caption, color: mm.t2)),
               const Spacer(),
-              Text('${S.peak} ${fmtRate(peak)}', style: TextStyle(fontSize: MeowFont.caption2, color: mm.t3)),
+              legend(S.upload, mm.accent),
+              const SizedBox(width: 12),
+              legend(S.download, mm.down),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Sparkline(up: up, down: down, height: chartHeight),
-          const SizedBox(height: 6),
-          Text(
-            running ? S.samplingPerSecond : S.disconnected,
-            style: TextStyle(fontSize: MeowFont.caption2, color: mm.t3),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Text('${S.peak} ${fmtRate(peak)}', style: MeowFont.mono(size: MeowFont.caption2, color: mm.t3)),
+              const Spacer(),
+              Text(
+                running ? S.samplingPerSecond : S.disconnected,
+                style: TextStyle(fontSize: MeowFont.caption2, color: mm.t3),
+              ),
+            ],
           ),
         ],
       ),
