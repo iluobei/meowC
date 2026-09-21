@@ -461,7 +461,7 @@ class _GroupDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final minW = size == NodeCardSize.large ? 230.0 : 150.0;
+    final minW = size == NodeCardSize.large ? 260.0 : 185.0;
     return LayoutBuilder(
       builder: (context, c) {
         final columns = ((c.maxWidth - 32) / minW).floor().clamp(1, 8);

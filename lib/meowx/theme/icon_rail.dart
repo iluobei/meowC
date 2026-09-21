@@ -68,8 +68,8 @@ class IconRail extends StatelessWidget {
                   ),
                   if ((it.badge ?? 0) > 0)
                     Positioned(
-                      top: 6,
-                      right: 8,
+                      top: 3,
+                      right: 2,   // 贴右上角，别盖住图标（99+ 比较宽）
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                         decoration: BoxDecoration(
