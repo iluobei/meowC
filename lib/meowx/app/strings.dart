@@ -55,6 +55,8 @@ class S {
   static const cardStandard = '标准';
   static const cardLarge = '大';
   static const nodeView = '节点视图';
+  static const layout = '布局';
+  static const cardSize = '卡片尺寸';
   static const timeout = '超时';
   static const builtinDirect = '直连';
   static const builtinReject = '拒绝';

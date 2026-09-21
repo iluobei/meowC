@@ -61,6 +61,17 @@ enum NodeCardSize {
   };
 }
 
+/// 手机端代理页布局：列表 = 可折叠的组卡；标签 = 顶部横向组标签 + 左右滑动换组。宽屏恒为两栏，不受它影响。
+enum ProxyLayout {
+  list,
+  tabs;
+
+  String get label => switch (this) {
+    ProxyLayout.list => '列表',
+    ProxyLayout.tabs => '标签',
+  };
+}
+
 /// 本地代理（HTTP/SOCKS5 混合端口）设置。
 @freezed
 abstract class MeowLocalProxy with _$MeowLocalProxy {
@@ -72,7 +83,8 @@ abstract class MeowLocalProxy with _$MeowLocalProxy {
     @Default('') String password,
   }) = _MeowLocalProxy;
 
-  factory MeowLocalProxy.fromJson(Map<String, Object?> json) => _$MeowLocalProxyFromJson(json);
+  factory MeowLocalProxy.fromJson(Map<String, Object?> json) =>
+      _$MeowLocalProxyFromJson(json);
 }
 
 /// 妙妙屋X 主控账户。
@@ -85,7 +97,8 @@ abstract class MeowAccount with _$MeowAccount {
     @Default('') String avatarUrl,
   }) = _MeowAccount;
 
-  factory MeowAccount.fromJson(Map<String, Object?> json) => _$MeowAccountFromJson(json);
+  factory MeowAccount.fromJson(Map<String, Object?> json) =>
+      _$MeowAccountFromJson(json);
 }
 
 /// MeowX 壳自己的设置（挂在 Config.meow 上，随 Bettbox 的偏好一起落盘）。
@@ -94,7 +107,12 @@ abstract class MeowSettings with _$MeowSettings {
   const factory MeowSettings({
     @Default(MeowDnsMode.follow) MeowDnsMode dnsMode,
     @Default(LatencyMode.url) LatencyMode latencyMode,
-    @JsonKey(unknownEnumValue: NodeCardSize.standard) @Default(NodeCardSize.standard) NodeCardSize nodeCardSize,
+    @JsonKey(unknownEnumValue: NodeCardSize.standard)
+    @Default(NodeCardSize.standard)
+    NodeCardSize nodeCardSize,
+    @JsonKey(unknownEnumValue: ProxyLayout.list)
+    @Default(ProxyLayout.list)
+    ProxyLayout proxyLayout,
 
     /// 订阅同步间隔（小时），0 = 手动
     @Default(24) int syncIntervalHours,
@@ -112,5 +130,6 @@ abstract class MeowSettings with _$MeowSettings {
     @Default(MeowAccount()) MeowAccount account,
   }) = _MeowSettings;
 
-  factory MeowSettings.fromJson(Map<String, Object?> json) => _$MeowSettingsFromJson(json);
+  factory MeowSettings.fromJson(Map<String, Object?> json) =>
+      _$MeowSettingsFromJson(json);
 }

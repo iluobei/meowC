@@ -140,6 +140,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
     final groups = ref.watch(currentGroupsStateProvider.select((s) => s.value));
     final hasProfile = ref.watch(currentProfileProvider) != null;
     final size = ref.watch(meowSettingProvider.select((s) => s.nodeCardSize));
+    final layout = ref.watch(meowSettingProvider.select((s) => s.proxyLayout));
     final nodeCount = _allLeafProxies(groups).length;
 
     final title = PageTitle(
@@ -147,20 +148,43 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          PopupMenuButton<NodeCardSize>(
+          PopupMenuButton<Object>(
             tooltip: S.nodeView,
             onSelected: (v) => ref
                 .read(meowSettingProvider.notifier)
-                .updateState((s) => s.copyWith(nodeCardSize: v)),
+                .updateState(
+                  (s) => switch (v) {
+                    ProxyLayout l => s.copyWith(proxyLayout: l),
+                    NodeCardSize c => s.copyWith(nodeCardSize: c),
+                    _ => s,
+                  },
+                ),
             itemBuilder: (_) => [
+              // 宽屏恒为两栏，布局切换只给手机
+              if (!wide) ...[
+                _menuCaption(S.layout, mm),
+                for (final v in ProxyLayout.values)
+                  CheckedPopupMenuItem<Object>(
+                    value: v,
+                    checked: v == layout,
+                    child: Text(v.label),
+                  ),
+                const PopupMenuDivider(),
+                _menuCaption(S.cardSize, mm),
+              ],
               for (final v in NodeCardSize.values)
-                CheckedPopupMenuItem(
+                CheckedPopupMenuItem<Object>(
                   value: v,
                   checked: v == size,
                   child: Text(v.label),
                 ),
             ],
-            child: RoundGlassButton(icon: Icons.grid_view_rounded, onTap: null),
+            child: RoundGlassButton(
+              icon: layout == ProxyLayout.tabs && !wide
+                  ? Icons.view_carousel_rounded
+                  : Icons.grid_view_rounded,
+              onTap: null,
+            ),
           ),
           const SizedBox(width: 8),
           RoundGlassButton(
@@ -195,6 +219,24 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
                     ref.read(currentPageLabelProvider.notifier).value =
                         PageLabel.profiles;
                   },
+          ),
+        ],
+      );
+    }
+
+    if (!wide && layout == ProxyLayout.tabs) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: title,
+          ),
+          Expanded(
+            child: _GroupTabs(
+              groups: groups,
+              columns: size == NodeCardSize.large ? 1 : 2,
+            ),
           ),
         ],
       );
@@ -245,6 +287,294 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
           ),
         ),
       ],
+    );
+  }
+}
+
+PopupMenuItem<Object> _menuCaption(String text, MeowTokens mm) => PopupMenuItem(
+  enabled: false,
+  height: 28,
+  child: Text(
+    text,
+    style: TextStyle(fontSize: MeowFont.caption, color: mm.t3),
+  ),
+);
+
+/// 标签布局（手机）：顶部一条横向滚动的组标签，下面是 PageView——一页一个组，左右滑动换组。
+/// 一次只构建当前页（及滑动中的相邻页）的可见格子。停在哪个组按订阅记在 `Profile.currentGroupName`。
+class _GroupTabs extends ConsumerStatefulWidget {
+  const _GroupTabs({required this.groups, required this.columns});
+  final List<Group> groups;
+  final int columns;
+
+  @override
+  ConsumerState<_GroupTabs> createState() => _GroupTabsState();
+}
+
+class _GroupTabsState extends ConsumerState<_GroupTabs> {
+  late final PageController _pages = PageController(initialPage: _index);
+  final _chipKeys = <String, GlobalKey>{};
+
+  /// 点标签触发的翻页动画期间，途经页的 onPageChanged 不算数。
+  bool _programmatic = false;
+
+  int get _index {
+    final name = ref.read(
+      currentProfileProvider.select((p) => p?.currentGroupName),
+    );
+    final i = widget.groups.indexWhere((g) => g.name == name);
+    return i < 0 ? 0 : i;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _revealChip(_index));
+  }
+
+  @override
+  void dispose() {
+    _pages.dispose();
+    super.dispose();
+  }
+
+  void _revealChip(int i) {
+    if (!mounted || i >= widget.groups.length) return;
+    final ctx = _chipKeys[widget.groups[i].name]?.currentContext;
+    if (ctx == null) return;
+    Scrollable.ensureVisible(
+      ctx,
+      alignment: 0.5,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _setCurrent(int i) {
+    globalState.appController.updateCurrentGroupName(widget.groups[i].name);
+    _revealChip(i);
+  }
+
+  Future<void> _tapChip(int i) async {
+    final from = _pages.page?.round() ?? 0;
+    if (from == i) return;
+    _setCurrent(i);
+    if ((from - i).abs() > 1) {
+      _pages.jumpToPage(i); // 隔得远就直接跳，不让中间几十页一闪而过
+      return;
+    }
+    _programmatic = true;
+    await _pages.animateToPage(
+      i,
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOut,
+    );
+    _programmatic = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mm = context.mm;
+    final groups = widget.groups;
+    final current = ref.watch(
+      currentProfileProvider.select((p) => p?.currentGroupName),
+    );
+    var index = groups.indexWhere((g) => g.name == current);
+    if (index < 0) index = 0;
+    // 换订阅 / 组列表变了：页码对不上就跳过去
+    if (!_programmatic) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_pages.hasClients || _programmatic) return;
+        if (_pages.page?.round() != index) _pages.jumpToPage(index);
+      });
+    }
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 38,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                for (final (i, g) in groups.indexed)
+                  Padding(
+                    padding: EdgeInsets.only(left: i == 0 ? 0 : 8),
+                    child: _GroupChip(
+                      key: _chipKeys.putIfAbsent(g.name, GlobalKey.new),
+                      group: g,
+                      selected: i == index,
+                      onTap: () => _tapChip(i),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Expanded(
+          child: PageView.builder(
+            controller: _pages,
+            itemCount: groups.length,
+            onPageChanged: (i) {
+              if (!_programmatic) _setCurrent(i);
+            },
+            itemBuilder: (_, i) {
+              final g = groups[i];
+              return CustomScrollView(
+                key: PageStorageKey('tab-${g.name}'),
+                slivers: [
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: SliverToBoxAdapter(child: _TabGroupHead(group: g)),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: DecoratedSliver(
+                      decoration: BoxDecoration(color: mm.elev),
+                      sliver: SliverPadding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: _cardPadding,
+                        ),
+                        sliver: _NodeSliverGrid(
+                          group: g,
+                          columns: widget.columns,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+                    sliver: SliverToBoxAdapter(
+                      child: Container(
+                        height: _cardPadding,
+                        decoration: BoxDecoration(
+                          color: mm.elev,
+                          borderRadius: const BorderRadius.vertical(
+                            bottom: Radius.circular(_cardRadius),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 组标签：icon + 组名；选中 = 与节点格同款的淡强调色底 + 描边。
+class _GroupChip extends StatelessWidget {
+  const _GroupChip({
+    super.key,
+    required this.group,
+    required this.selected,
+    required this.onTap,
+  });
+  final Group group;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final mm = context.mm;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        height: 38,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: selected ? mm.accent.withValues(alpha: 0.10) : mm.elev,
+          borderRadius: BorderRadius.circular(19),
+          border: Border.all(
+            color: selected ? mm.accent : Colors.transparent,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (group.icon.isNotEmpty) ...[
+              CommonTargetIcon(src: group.icon, size: 18),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              group.name,
+              style: TextStyle(
+                fontSize: MeowFont.subheadline,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                color: selected ? mm.accent : mm.t1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 标签布局里组卡的头（上圆角）：TypeBadge + 成员数 + 当前选中 + 延迟 + 整组测速。组名已经在标签上，这里不重复。
+class _TabGroupHead extends ConsumerWidget {
+  const _TabGroupHead({required this.group});
+  final Group group;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mm = context.mm;
+    final badge = groupBadge(group.type.name, mm);
+    final selectedName =
+        ref.watch(getSelectedProxyNameProvider(group.name)) ?? '';
+    final mode = ref.watch(meowSettingProvider.select((s) => s.latencyMode));
+    return Container(
+      padding: const EdgeInsets.fromLTRB(_cardPadding, 8, 6, 8),
+      decoration: BoxDecoration(
+        color: mm.elev,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(_cardRadius),
+        ),
+      ),
+      child: Row(
+        children: [
+          TypeBadge(badge.label, color: badge.color),
+          const SizedBox(width: 6),
+          Text(
+            '${group.all.length}',
+            style: MeowFont.mono(size: MeowFont.caption2, color: mm.t3),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: mm.accent, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              selectedName.isEmpty ? S.currentSelected : selectedName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2),
+            ),
+          ),
+          if (selectedName.isNotEmpty)
+            LatencyChip(
+              ref.watch(
+                getDelayProvider(
+                  proxyName: selectedName,
+                  testUrl: group.testUrl,
+                ),
+              ),
+              mode: mode,
+            ),
+          _GroupTestButton(group: group),
+        ],
+      ),
     );
   }
 }
