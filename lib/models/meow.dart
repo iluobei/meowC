@@ -61,6 +61,29 @@ enum NodeCardSize {
   };
 }
 
+/// 首页上可以关掉的卡片（连接主卡恒在）。隐藏的卡记在 `MeowSettings.homeHiddenCards`（存 name）。
+enum HomeCard {
+  upload,
+  download,
+  chart,
+  proxied,
+  direct,
+  memory,
+  dns,
+  ip;
+
+  String get label => switch (this) {
+    HomeCard.upload => '上传',
+    HomeCard.download => '下载',
+    HomeCard.chart => '网速图',
+    HomeCard.proxied => '代理连接',
+    HomeCard.direct => '直连连接',
+    HomeCard.memory => '内存',
+    HomeCard.dns => 'DNS 模式',
+    HomeCard.ip => '出口 IP',
+  };
+}
+
 /// 手机端代理页布局：列表 = 可折叠的组卡；标签 = 顶部横向组标签 + 左右滑动换组。宽屏恒为两栏，不受它影响。
 enum ProxyLayout {
   list,
@@ -113,6 +136,9 @@ abstract class MeowSettings with _$MeowSettings {
     @JsonKey(unknownEnumValue: ProxyLayout.list)
     @Default(ProxyLayout.list)
     ProxyLayout proxyLayout,
+
+    /// 首页关掉的卡片（HomeCard.name）
+    @Default([]) List<String> homeHiddenCards,
 
     /// 订阅同步间隔（小时），0 = 手动
     @Default(24) int syncIntervalHours,

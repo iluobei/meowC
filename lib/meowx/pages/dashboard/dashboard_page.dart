@@ -107,6 +107,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   Widget build(BuildContext context) {
     final wide = ref.watch(isTwoPaneProvider);
     final running = ref.watch(isRunningProvider);
+    final hidden = ref.watch(meowSettingProvider.select((s) => s.homeHiddenCards));
+    // Windows 上「网速图」的位置是接管卡（TUN / 系统代理），不给关
+    final desktop = system.isWindows || const bool.fromEnvironment('MEOWX_PREVIEW_DESKTOP');
+    bool shows(HomeCard c) => (c == HomeCard.chart && desktop) || !hidden.contains(c.name);
+    final title = PageTitle(
+      S.home,
+      trailing: RoundGlassButton(
+        icon: Icons.tune_rounded,
+        tooltip: S.homeCards,
+        onTap: () => _showCardSettings(context, desktop),
+      ),
+    );
     final upload = _MetricCard(
       icon: Icons.arrow_upward_rounded,
       title: S.upload,
@@ -151,34 +163,35 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     const main = _ConnectionCard();
     // Windows：网速图的位置换成「TUN / 系统代理」接管卡（桌面端专有，两个开关沿用 Bettbox 的实现）
     // MEOWX_PREVIEW_DESKTOP：只用于在 Android 模拟器上预览这张桌面卡，正式包不带
-    final Widget speed = (system.isWindows || const bool.fromEnvironment('MEOWX_PREVIEW_DESKTOP')) ? const _TakeoverCard() : _SpeedCard(chartHeight: wide ? 132 : 84);
+    final Widget speed = desktop ? const _TakeoverCard() : _SpeedCard(chartHeight: wide ? 132 : 84);
 
     if (!wide) {
       return ListView(
         padding: const EdgeInsets.fromLTRB(_pad, 0, _pad, _pad + 24),
-        children: [
-          const PageTitle(S.home),
-          const SizedBox(height: _gap),
-          _row(upload, download),
-          const SizedBox(height: _gap),
-          speed,
-          const SizedBox(height: _gap),
+        children: _spaced([
+          title,
+          _pair(shows(HomeCard.upload) ? upload : null, shows(HomeCard.download) ? download : null),
+          if (shows(HomeCard.chart)) speed,
           main,
-          const SizedBox(height: _gap),
-          _row(proxyCard, directCard),
-          const SizedBox(height: _gap),
-          _row(memoryCard, dnsCard),
-          const SizedBox(height: _gap),
-          exitIp,
-        ],
+          _pair(shows(HomeCard.proxied) ? proxyCard : null, shows(HomeCard.direct) ? directCard : null),
+          _pair(shows(HomeCard.memory) ? memoryCard : null, shows(HomeCard.dns) ? dnsCard : null),
+          if (shows(HomeCard.ip)) exitIp,
+        ]),
       );
     }
+    Widget? wideRow(Widget? row) => row == null ? null : SizedBox(height: _wideRowHeight, child: row);
+    final right = _spaced([
+      wideRow(_pair(shows(HomeCard.upload) ? upload : null, shows(HomeCard.download) ? download : null, bounded: true)),
+      wideRow(_pair(shows(HomeCard.proxied) ? proxyCard : null, shows(HomeCard.direct) ? directCard : null, bounded: true)),
+      wideRow(_pair(shows(HomeCard.memory) ? memoryCard : null, shows(HomeCard.dns) ? dnsCard : null, bounded: true)),
+      if (shows(HomeCard.ip)) wideRow(exitIp),
+    ]);
     const leftHeight = _wideRowHeight * 2 + _gap;
     return PageWidth(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(0, _pad, _pad, _pad),
         children: [
-          const PageTitle(S.home),
+          title,
           const SizedBox(height: _gap),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -187,25 +200,17 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 child: Column(
                   children: [
                     SizedBox(height: leftHeight, child: main),
-                    const SizedBox(height: _gap),
-                    SizedBox(height: leftHeight, child: speed),
+                    if (shows(HomeCard.chart)) ...[
+                      const SizedBox(height: _gap),
+                      SizedBox(height: leftHeight, child: speed),
+                    ],
                   ],
                 ),
               ),
-              const SizedBox(width: _gap),
-              Expanded(
-                child: Column(
-                  children: [
-                    SizedBox(height: _wideRowHeight, child: _row(upload, download, bounded: true)),
-                    const SizedBox(height: _gap),
-                    SizedBox(height: _wideRowHeight, child: _row(proxyCard, directCard, bounded: true)),
-                    const SizedBox(height: _gap),
-                    SizedBox(height: _wideRowHeight, child: _row(memoryCard, dnsCard, bounded: true)),
-                    const SizedBox(height: _gap),
-                    const SizedBox(height: _wideRowHeight, child: exitIp),
-                  ],
-                ),
-              ),
+              if (right.isNotEmpty) ...[
+                const SizedBox(width: _gap),
+                Expanded(child: Column(children: right)),
+              ],
             ],
           ),
         ],
@@ -215,12 +220,80 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
   /// 两卡并排、等高。compact 下 ListView 的高度无界，Row 的 stretch 会把子项撑成无限高
   /// （release 不断言，表现为该行之后整页空白），所以套 IntrinsicHeight 取两卡中较高者；wide 下外层已给定高度。
-  Widget _row(Widget a, Widget b, {bool bounded = false}) {
+  /// 关掉的卡传 null：只剩一张就占满整行，两张都关返回 null（整行不出现）。
+  Widget? _pair(Widget? a, Widget? b, {bool bounded = false}) {
+    final cards = [?a, ?b];
+    if (cards.isEmpty) return null;
     final row = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [Expanded(child: a), const SizedBox(width: _gap), Expanded(child: b)],
+      children: [
+        for (final (i, c) in cards.indexed) ...[
+          if (i > 0) const SizedBox(width: _gap),
+          Expanded(child: c),
+        ],
+      ],
     );
     return bounded ? row : IntrinsicHeight(child: row);
+  }
+
+  /// 去掉 null，并在相邻两项之间插入间距。
+  List<Widget> _spaced(List<Widget?> items) {
+    final out = <Widget>[];
+    for (final w in items.nonNulls) {
+      if (out.isNotEmpty) out.add(const SizedBox(height: _gap));
+      out.add(w);
+    }
+    return out;
+  }
+
+  void _showCardSettings(BuildContext context, bool desktop) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,   // 默认上限是屏高的 9/16，八个开关 + 说明放不下
+      builder: (ctx) => Consumer(
+        builder: (ctx, ref, _) {
+          final mm = ctx.mm;
+          final hidden = ref.watch(meowSettingProvider.select((s) => s.homeHiddenCards));
+          return SafeArea(
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.only(bottom: 12),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
+                  child: Text(
+                    S.homeCards,
+                    style: TextStyle(fontSize: MeowFont.headline, fontWeight: FontWeight.w600, color: mm.t1),
+                  ),
+                ),
+                for (final c in HomeCard.values)
+                  if (!(desktop && c == HomeCard.chart))
+                    SwitchListTile(
+                      dense: true,
+                      title: Text(c.label, style: TextStyle(fontSize: MeowFont.body, color: mm.t1)),
+                      value: !hidden.contains(c.name),
+                      onChanged: (on) => ref.read(meowSettingProvider.notifier).updateState(
+                        (s) => s.copyWith(
+                          homeHiddenCards: on
+                              ? s.homeHiddenCards.where((n) => n != c.name).toList()
+                              : [...s.homeHiddenCards, c.name],
+                        ),
+                      ),
+                    ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                  child: Text(
+                    S.homeCardsHint,
+                    style: TextStyle(fontSize: MeowFont.caption, color: mm.t3),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 }
 

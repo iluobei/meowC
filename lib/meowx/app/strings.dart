@@ -56,6 +56,8 @@ class S {
   static const cardLarge = '大';
   static const nodeView = '节点视图';
   static const layout = '布局';
+  static const homeCards = '首页卡片';
+  static const homeCardsHint = '关掉的卡片不在首页显示；连接主卡始终保留。出口 IP 关掉后也不再查询。';
   static const cardSize = '卡片尺寸';
   static const timeout = '超时';
   static const builtinDirect = '直连';
