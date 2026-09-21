@@ -736,7 +736,7 @@ class _ExitIpCardState extends ConsumerState<_ExitIpCard> {
               children: [
                 Expanded(child: col(S.domesticDirect, st.domestic, loading: st.loadingDomestic, placeholder: '—')),
                 Container(width: 1, margin: const EdgeInsets.symmetric(horizontal: 10), color: mm.t3.withValues(alpha: 0.2)),
-                Expanded(child: col('${S.globalVia} 代理', st.global, loading: st.loadingGlobal, placeholder: running ? '—' : S.disconnected)),
+                Expanded(child: col('${S.globalVia} ${st.globalVia ?? '代理'}', st.global, loading: st.loadingGlobal, placeholder: running ? '—' : S.disconnected)),
               ],
             ),
           ),
