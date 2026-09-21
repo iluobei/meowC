@@ -14,11 +14,10 @@ import '../../panel/account.dart';
 import '../../state/meow_settings.dart';
 import '../../state/status.dart';
 import '../../theme/badges.dart';
-import '../../theme/glass_card.dart';
-import '../../theme/unlock_badge.dart';
 import '../../theme/page_title.dart';
 import '../../theme/tokens.dart';
 import '../../theme/two_pane.dart';
+import '../../theme/unlock_badge.dart';
 
 /// 展开的组（默认全部收起，不落盘）。
 final expandedGroupsProvider = StateProvider<Set<String>>((ref) => {});
@@ -39,6 +38,15 @@ List<Proxy> _allLeafProxies(List<Group> groups) {
   return out;
 }
 
+const _cardRadius = 26.0;
+const _cardPadding = 14.0;
+const _gridSpacing = 9.0;
+
+/// 节点格高度：两行（名 + 副标题）。
+const _cellHeight = 58.0;
+
+/// 代理页。手机端整页是一个 CustomScrollView：每个组卡 = DecoratedSliver（卡片底）+ 组头 + 懒加载的 SliverGrid，
+/// 300 个节点展开时只构建可见的格子（之前 shrinkWrap GridView 一次建全部，展开 / 选节点都会掉帧）。
 class ProxiesPage extends ConsumerStatefulWidget {
   const ProxiesPage({super.key});
 
@@ -136,16 +144,19 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
     }
 
     if (!wide) {
-      return ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
-        itemCount: groups.length + 1,
-        itemBuilder: (context, i) {
-          if (i == 0) return Padding(padding: const EdgeInsets.only(bottom: 12), child: title);
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _GroupCard(group: groups[i - 1], size: size),
-          );
-        },
+      return CustomScrollView(
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            sliver: SliverToBoxAdapter(child: title),
+          ),
+          for (final g in groups)
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              sliver: _GroupSliver(group: g, size: size, columns: size == NodeCardSize.large ? 1 : 2),
+            ),
+          const SliverPadding(padding: EdgeInsets.only(bottom: 28)),
+        ],
       );
     }
 
@@ -253,7 +264,11 @@ class _GroupHeader extends ConsumerWidget {
         const SizedBox(width: 4),
         _GroupTestButton(group: group),
         if (expanded != null)
-          Icon(expanded! ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 20, color: mm.t3),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onToggle,
+            child: Icon(expanded! ? Icons.expand_less_rounded : Icons.expand_more_rounded, size: 20, color: mm.t3),
+          ),
       ],
     );
   }
@@ -288,11 +303,12 @@ class _GroupTestButton extends StatelessWidget {
   }
 }
 
-/// 手机端组卡：默认收起，收起时常驻「当前选中」行；点名字展开 / 点闪电测速分离。
-class _GroupCard extends ConsumerWidget {
-  const _GroupCard({required this.group, required this.size});
+/// 手机端组卡（sliver 版）：默认收起，收起时常驻「当前选中」行；展开后节点格懒加载。
+class _GroupSliver extends ConsumerWidget {
+  const _GroupSliver({required this.group, required this.size, required this.columns});
   final Group group;
   final NodeCardSize size;
+  final int columns;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -306,36 +322,45 @@ class _GroupCard extends ConsumerWidget {
       ref.read(expandedGroupsProvider.notifier).state = set;
     }
 
-    return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _GroupHeader(group: group, expanded: expanded, onToggle: toggle, dense: true),
-          const SizedBox(height: 10),
-          if (!expanded)
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: toggle,
-              child: Row(
-                children: [
-                  Container(width: 7, height: 7, decoration: BoxDecoration(color: mm.accent, shape: BoxShape.circle)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      selectedName.isEmpty ? S.currentSelected : selectedName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2),
-                    ),
-                  ),
-                  if (selectedName.isNotEmpty)
-                    LatencyChip(ref.watch(getDelayProvider(proxyName: selectedName, testUrl: group.testUrl)), mode: mode),
-                ],
+    return DecoratedSliver(
+      decoration: BoxDecoration(color: mm.elev, borderRadius: BorderRadius.circular(_cardRadius)),
+      sliver: SliverPadding(
+        padding: const EdgeInsets.all(_cardPadding),
+        sliver: SliverMainAxisGroup(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _GroupHeader(group: group, expanded: expanded, onToggle: toggle, dense: true),
               ),
-            )
-          else
-            _NodeGrid(group: group, size: size),
-        ],
+            ),
+            if (!expanded)
+              SliverToBoxAdapter(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: toggle,
+                  child: Row(
+                    children: [
+                      Container(width: 7, height: 7, decoration: BoxDecoration(color: mm.accent, shape: BoxShape.circle)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          selectedName.isEmpty ? S.currentSelected : selectedName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2),
+                        ),
+                      ),
+                      if (selectedName.isNotEmpty)
+                        LatencyChip(ref.watch(getDelayProvider(proxyName: selectedName, testUrl: group.testUrl)), mode: mode),
+                    ],
+                  ),
+                ),
+              )
+            else
+              _NodeSliverGrid(group: group, columns: columns),
+          ],
+        ),
       ),
     );
   }
@@ -404,7 +429,7 @@ class _GroupRow extends ConsumerWidget {
   }
 }
 
-/// 宽屏右栏：组头 + 节点网格。
+/// 宽屏右栏：组头 + 懒加载节点网格（按宽度自适应列数）。
 class _GroupDetail extends StatelessWidget {
   const _GroupDetail({required this.group, required this.size});
   final Group group;
@@ -412,23 +437,32 @@ class _GroupDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-      children: [
-        _GroupHeader(group: group),
-        const SizedBox(height: 12),
-        _NodeGrid(group: group, size: size, wide: true),
-      ],
+    final minW = size == NodeCardSize.large ? 230.0 : 150.0;
+    return LayoutBuilder(
+      builder: (context, c) {
+        final columns = ((c.maxWidth - 32) / minW).floor().clamp(1, 8);
+        return CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              sliver: SliverToBoxAdapter(child: _GroupHeader(group: group)),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              sliver: _NodeSliverGrid(group: group, columns: columns),
+            ),
+          ],
+        );
+      },
     );
   }
 }
 
-/// 节点网格：紧凑 3 列 / 标准 2 列 / 大 1 列；宽屏按最小宽度自适应；间距 9。
-class _NodeGrid extends ConsumerWidget {
-  const _NodeGrid({required this.group, required this.size, this.wide = false});
+/// 懒加载节点网格：只构建可见格子；每格自带 RepaintBoundary。
+class _NodeSliverGrid extends ConsumerWidget {
+  const _NodeSliverGrid({required this.group, required this.columns});
   final Group group;
-  final NodeCardSize size;
-  final bool wide;
+  final int columns;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -436,47 +470,34 @@ class _NodeGrid extends ConsumerWidget {
     final metas = ref.watch(proxyMetaProvider);
     final mode = ref.watch(meowSettingProvider.select((s) => s.latencyMode));
     final isSelector = group.type == GroupType.Selector;
-    final (minW, rowH) = switch (size) {
-      NodeCardSize.compact => (112.0, 34.0),
-      NodeCardSize.standard => (150.0, 58.0),
-      NodeCardSize.large => (230.0, 58.0),
-    };
-    return LayoutBuilder(
-      builder: (context, c) {
-        final columns = wide
-            ? (c.maxWidth / minW).floor().clamp(1, 8)
-            : switch (size) { NodeCardSize.compact => 3, NodeCardSize.standard => 2, NodeCardSize.large => 1 };
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: EdgeInsets.zero,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: columns,
-            mainAxisSpacing: 9,
-            crossAxisSpacing: 9,
-            mainAxisExtent: rowH,
-          ),
-          itemCount: group.all.length,
-          itemBuilder: (_, i) {
-            final p = group.all[i];
-            return _NodeCell(
-              proxy: p,
-              group: group,
-              meta: metas[p.name],
-              selected: p.name == selectedName,
-              size: size,
-              mode: mode,
-              onTap: isSelector
-                  ? () {
-                      final c = globalState.appController;
-                      c.updateCurrentSelectedMap(group.name, p.name);
-                      c.changeProxyDebounce(group.name, p.name);
-                    }
-                  : null,
-            );
-          },
-        );
-      },
+    return SliverGrid(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: columns,
+        mainAxisSpacing: _gridSpacing,
+        crossAxisSpacing: _gridSpacing,
+        mainAxisExtent: _cellHeight,
+      ),
+      delegate: SliverChildBuilderDelegate(
+        (context, i) {
+          final p = group.all[i];
+          return _NodeCell(
+            key: ValueKey(p.name),
+            proxy: p,
+            group: group,
+            meta: metas[p.name],
+            selected: p.name == selectedName,
+            mode: mode,
+            onTap: isSelector
+                ? () {
+                    final c = globalState.appController;
+                    c.updateCurrentSelectedMap(group.name, p.name);
+                    c.changeProxyDebounce(group.name, p.name);
+                  }
+                : null,
+          );
+        },
+        childCount: group.all.length,
+      ),
     );
   }
 }
@@ -484,11 +505,11 @@ class _NodeGrid extends ConsumerWidget {
 /// 节点格：协议色点 + 名；行 2 副标题 + 延迟胶囊（点 = 测该成员）；底 primary 0.05 圆角 13；选中 accent 描边 + 发光。
 class _NodeCell extends ConsumerWidget {
   const _NodeCell({
+    super.key,
     required this.proxy,
     required this.group,
     required this.meta,
     required this.selected,
-    required this.size,
     required this.mode,
     required this.onTap,
   });
@@ -497,7 +518,6 @@ class _NodeCell extends ConsumerWidget {
   final Group group;
   final ProxyMeta? meta;
   final bool selected;
-  final NodeCardSize size;
   final LatencyMode mode;
   final VoidCallback? onTap;
 
@@ -508,18 +528,20 @@ class _NodeCell extends ConsumerWidget {
     final builtin = builtinSubtitle(proxy.name);
     final style = protoStyle(proxy.type, mm);
     final dotColor = builtin != null ? mm.good : (nested ? mm.accent : style.color);
-    final subtitle = builtin ?? (nested ? '${S.nestedGroup} · ${groupBadge(proxy.type, mm).label}' : (meta?.securitySubtitle.isNotEmpty == true ? '${style.label} · ${meta!.securitySubtitle}' : style.label));
+    final subtitle = builtin ??
+        (nested
+            ? '${S.nestedGroup} · ${groupBadge(proxy.type, mm).label}'
+            : (meta?.securitySubtitle.isNotEmpty == true ? '${style.label} · ${meta!.securitySubtitle}' : style.label));
     final delay = ref.watch(getDelayProvider(proxyName: proxy.name, testUrl: group.testUrl));
     final medal = ref.watch(medalsProvider.select((m) => m[proxy.name]));
     final unlocks = ref.watch(unlocksProvider.select((m) => m[proxy.name]));
-    final compact = size == NodeCardSize.compact;
     final testable = !const {'REJECT', 'REJECT-DROP', 'PASS'}.contains(proxy.name.toUpperCase());
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.all(compact ? 7 : 10),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: mm.t1.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(13),
@@ -542,41 +564,32 @@ class _NodeCell extends ConsumerWidget {
                     proxy.name,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: compact ? 12 : MeowFont.subheadline, fontWeight: FontWeight.w500, color: mm.t1),
+                    style: TextStyle(fontSize: MeowFont.subheadline, fontWeight: FontWeight.w500, color: mm.t1),
                   ),
                 ),
                 if (nested) Icon(Icons.layers_rounded, size: 14, color: mm.t3),
-                if (medal != null) ...[const SizedBox(width: 2), MedalBadge(medal, size: compact ? 12 : 14)],
-                if (unlocks != null) ...[const SizedBox(width: 2), UnlockBadge(unlocks, size: compact ? 12 : 14)],
-                if (compact && testable) ...[
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: () => proxyDelayTest(proxy, group.testUrl),
-                    child: LatencyChip(delay, mode: mode, testing: delay == 0),
-                  ),
-                ],
+                if (medal != null) ...[const SizedBox(width: 2), MedalBadge(medal, size: 14)],
+                if (unlocks != null) ...[const SizedBox(width: 2), UnlockBadge(unlocks, size: 14)],
               ],
             ),
-            if (!compact) ...[
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: MeowFont.mono(size: MeowFont.caption2, color: mm.t3),
-                    ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: MeowFont.mono(size: MeowFont.caption2, color: mm.t3),
                   ),
-                  if (testable)
-                    GestureDetector(
-                      onTap: () => proxyDelayTest(proxy, group.testUrl),
-                      child: LatencyChip(delay, mode: mode, testing: delay == 0),
-                    ),
-                ],
-              ),
-            ],
+                ),
+                if (testable)
+                  GestureDetector(
+                    onTap: () => proxyDelayTest(proxy, group.testUrl),
+                    child: LatencyChip(delay, mode: mode),
+                  ),
+              ],
+            ),
           ],
         ),
       ),

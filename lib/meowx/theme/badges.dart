@@ -22,7 +22,11 @@ class LatencyChip extends StatelessWidget {
     if (ms == null) {
       text = '—';
       color = mm.t3;
-    } else if (ms! <= 0 || ms! >= 100000) {
+    } else if (ms == 0) {
+      // Bettbox 的 delayMap 用 0 表示「测试中」，不是超时
+      text = '…';
+      color = mm.t3;
+    } else if (ms! < 0 || ms! >= 100000) {
       text = S.timeout;
       color = mm.t3;
     } else {
@@ -30,7 +34,7 @@ class LatencyChip extends StatelessWidget {
       color = latencyColor(ms!, mode, mm);
     }
     return Opacity(
-      opacity: testing ? 0.35 : 1,
+      opacity: testing || ms == 0 ? 0.35 : 1,
       child: Container(
         constraints: const BoxConstraints(minWidth: 30),
         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),

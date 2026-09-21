@@ -50,14 +50,12 @@ enum LatencyMode {
   };
 }
 
-/// 节点卡片三档：紧凑 3 列 / 标准 2 列 / 大 1 列。
+/// 节点卡片两档：标准 2 列 / 大 1 列（紧凑档已删：3 列时名字挤不下、徽标叠在一起）。
 enum NodeCardSize {
-  compact,
   standard,
   large;
 
   String get label => switch (this) {
-    NodeCardSize.compact => '紧凑',
     NodeCardSize.standard => '标准',
     NodeCardSize.large => '大',
   };
@@ -96,7 +94,7 @@ abstract class MeowSettings with _$MeowSettings {
   const factory MeowSettings({
     @Default(MeowDnsMode.follow) MeowDnsMode dnsMode,
     @Default(LatencyMode.url) LatencyMode latencyMode,
-    @Default(NodeCardSize.standard) NodeCardSize nodeCardSize,
+    @JsonKey(unknownEnumValue: NodeCardSize.standard) @Default(NodeCardSize.standard) NodeCardSize nodeCardSize,
 
     /// 订阅同步间隔（小时），0 = 手动
     @Default(24) int syncIntervalHours,
