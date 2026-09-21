@@ -273,23 +273,29 @@ class _GroupHeader extends ConsumerWidget {
           CommonTargetIcon(src: group.icon, size: 20),
           const SizedBox(width: 8),
         ],
-        Flexible(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: onToggle,
-            child: Text(
-              group.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: MeowFont.headline, fontWeight: FontWeight.w600, color: mm.t1),
+        // 名 + 徽标 + 成员数占满左侧，闪电 / 箭头贴右（之前 Flexible 与 Spacer 平分空间，右侧按钮停在半路）
+        Expanded(
+          child: Row(
+            children: [
+            Flexible(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onToggle,
+                child: Text(
+                  group.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: MeowFont.headline, fontWeight: FontWeight.w600, color: mm.t1),
+                ),
+              ),
             ),
+            const SizedBox(width: 8),
+            TypeBadge(badge.label, color: badge.color),
+            const SizedBox(width: 6),
+            Text('${group.all.length}', style: MeowFont.mono(size: MeowFont.caption2, color: mm.t3)),
+            ],
           ),
         ),
-        const SizedBox(width: 8),
-        TypeBadge(badge.label, color: badge.color),
-        const SizedBox(width: 6),
-        Text('${group.all.length}', style: MeowFont.mono(size: MeowFont.caption2, color: mm.t3)),
-        const Spacer(),
         if (!dense && delay != null && delay != 0) LatencyChip(delay, mode: mode),
         const SizedBox(width: 4),
         _GroupTestButton(group: group),
