@@ -328,10 +328,15 @@ class _GroupSliver extends ConsumerWidget {
         padding: const EdgeInsets.all(_cardPadding),
         sliver: SliverMainAxisGroup(
           slivers: [
+            // 整个头部（含空白处）点按 = 展开 / 收起；闪电按钮自己吃掉点击，不会触发展开
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _GroupHeader(group: group, expanded: expanded, onToggle: toggle, dense: true),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: toggle,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _GroupHeader(group: group, expanded: expanded, onToggle: toggle, dense: true),
+                ),
               ),
             ),
             if (!expanded)
