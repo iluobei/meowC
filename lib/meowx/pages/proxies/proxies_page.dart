@@ -73,6 +73,40 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
     if (ref.read(isLoggedInProvider)) ref.read(accountActionsProvider).refreshExtras(ifStale: true);
   }
 
+  /// 一个组 = 头（上圆角卡）+ 展开时的节点网格（直角底）+ 下圆角收尾。
+  /// 不用 SliverMainAxisGroup：它滚动后的命中测试有偏移，节点点不中。
+  List<Widget> _groupSlivers(Group g, int columns) {
+    final mm = context.mm;
+    final expanded = ref.watch(expandedGroupsProvider.select((s) => s.contains(g.name)));
+    return [
+      SliverPadding(
+        padding: EdgeInsets.fromLTRB(16, 0, 16, expanded ? 0 : 12),
+        sliver: SliverToBoxAdapter(child: _GroupHead(group: g, expanded: expanded)),
+      ),
+      if (expanded) ...[
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          sliver: DecoratedSliver(
+            decoration: BoxDecoration(color: mm.elev),
+            sliver: SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: _cardPadding),
+              sliver: _NodeSliverGrid(group: g, columns: columns),
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          sliver: SliverToBoxAdapter(
+            child: Container(
+              height: _cardPadding,
+              decoration: BoxDecoration(color: mm.elev, borderRadius: const BorderRadius.vertical(bottom: Radius.circular(_cardRadius))),
+            ),
+          ),
+        ),
+      ],
+    ];
+  }
+
   Future<void> _testAll(List<Group> groups) async {
     if (_testingAll) return;
     setState(() => _testingAll = true);
@@ -150,11 +184,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             sliver: SliverToBoxAdapter(child: title),
           ),
-          for (final g in groups)
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              sliver: _GroupSliver(group: g, size: size, columns: size == NodeCardSize.large ? 1 : 2),
-            ),
+          for (final g in groups) ..._groupSlivers(g, size == NodeCardSize.large ? 1 : 2),
           const SliverPadding(padding: EdgeInsets.only(bottom: 28)),
         ],
       );
@@ -303,17 +333,16 @@ class _GroupTestButton extends StatelessWidget {
   }
 }
 
-/// 手机端组卡（sliver 版）：默认收起，收起时常驻「当前选中」行；展开后节点格懒加载。
-class _GroupSliver extends ConsumerWidget {
-  const _GroupSliver({required this.group, required this.size, required this.columns});
+/// 手机端组卡的头：收起时是完整圆角卡（含「当前选中」行）；展开时只有上圆角，下面接节点网格。
+/// 整个头（含空白处）点按 = 展开 / 收起；闪电按钮自己吃掉点击。
+class _GroupHead extends ConsumerWidget {
+  const _GroupHead({required this.group, required this.expanded});
   final Group group;
-  final NodeCardSize size;
-  final int columns;
+  final bool expanded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mm = context.mm;
-    final expanded = ref.watch(expandedGroupsProvider.select((s) => s.contains(group.name)));
     final selectedName = ref.watch(getSelectedProxyNameProvider(group.name)) ?? '';
     final mode = ref.watch(meowSettingProvider.select((s) => s.latencyMode));
     void toggle() {
@@ -322,48 +351,38 @@ class _GroupSliver extends ConsumerWidget {
       ref.read(expandedGroupsProvider.notifier).state = set;
     }
 
-    return DecoratedSliver(
-      decoration: BoxDecoration(color: mm.elev, borderRadius: BorderRadius.circular(_cardRadius)),
-      sliver: SliverPadding(
-        padding: const EdgeInsets.all(_cardPadding),
-        sliver: SliverMainAxisGroup(
-          slivers: [
-            // 整个头部（含空白处）点按 = 展开 / 收起；闪电按钮自己吃掉点击，不会触发展开
-            SliverToBoxAdapter(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: toggle,
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _GroupHeader(group: group, expanded: expanded, onToggle: toggle, dense: true),
-                ),
-              ),
-            ),
-            if (!expanded)
-              SliverToBoxAdapter(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: toggle,
-                  child: Row(
-                    children: [
-                      Container(width: 7, height: 7, decoration: BoxDecoration(color: mm.accent, shape: BoxShape.circle)),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          selectedName.isEmpty ? S.currentSelected : selectedName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2),
-                        ),
-                      ),
-                      if (selectedName.isNotEmpty)
-                        LatencyChip(ref.watch(getDelayProvider(proxyName: selectedName, testUrl: group.testUrl)), mode: mode),
-                    ],
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: toggle,
+      child: Container(
+        padding: EdgeInsets.fromLTRB(_cardPadding, _cardPadding, _cardPadding, expanded ? 10 : _cardPadding),
+        decoration: BoxDecoration(
+          color: mm.elev,
+          borderRadius: expanded ? const BorderRadius.vertical(top: Radius.circular(_cardRadius)) : BorderRadius.circular(_cardRadius),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _GroupHeader(group: group, expanded: expanded, onToggle: toggle, dense: true),
+            if (!expanded) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Container(width: 7, height: 7, decoration: BoxDecoration(color: mm.accent, shape: BoxShape.circle)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      selectedName.isEmpty ? S.currentSelected : selectedName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2),
+                    ),
                   ),
-                ),
-              )
-            else
-              _NodeSliverGrid(group: group, columns: columns),
+                  if (selectedName.isNotEmpty)
+                    LatencyChip(ref.watch(getDelayProvider(proxyName: selectedName, testUrl: group.testUrl)), mode: mode),
+                ],
+              ),
+            ],
           ],
         ),
       ),
