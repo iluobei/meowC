@@ -242,6 +242,9 @@ class AppEnvManager extends StatelessWidget {
   }
 }
 
+/// MeowX 壳自己负责导航（手机底栏 / 宽屏 IconRail）。留成函数而不是常量，方便以后按设置切回 Bettbox 原界面。
+bool _meowShellOwnsNavigation() => true;
+
 class AppSidebarContainer extends ConsumerWidget {
   final Widget child;
 
@@ -287,7 +290,8 @@ class AppSidebarContainer extends ConsumerWidget {
     final navigationState = ref.watch(navigationStateProvider);
     final navigationItems = navigationState.navigationItems;
     final isMobileView = navigationState.viewMode == ViewMode.mobile;
-    if (isMobileView) {
+    // MeowX：壳自带左侧图标栏（IconRail），Bettbox 的桌面侧栏一律不显示，否则出现双重菜单
+    if (isMobileView || _meowShellOwnsNavigation()) {
       return child;
     }
     final currentIndex = navigationState.currentIndex;

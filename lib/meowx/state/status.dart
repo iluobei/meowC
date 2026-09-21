@@ -5,10 +5,21 @@ import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// 宽屏（iPad 式三栏）阈值：沿用 Bettbox 的 laptop 上限 840。
+/// 图标栏布局（对齐 iPad 的 regular 宽度类）：视口宽 ≥ 700 —— 平板横竖屏、Windows 窗口都走左侧 IconRail。
+const railMinWidth = 700.0;
+
+/// 两栏 / 首页宽网格还需要更宽：图标栏 104 + 左栏 360 + 右栏至少 ~430。
+const twoPaneMinWidth = 900.0;
+
 final isWideLayoutProvider = Provider<bool>((ref) {
   if (globalState.isAndroidTV) return false;
-  return ref.watch(viewWidthProvider) > maxLaptopWidth;
+  return ref.watch(viewWidthProvider) >= railMinWidth;
+});
+
+/// 代理 / 连接 / 配置三页的 TwoPane 与首页宽网格。窄于此（平板竖屏）在图标栏右侧用单列。
+final isTwoPaneProvider = Provider<bool>((ref) {
+  if (globalState.isAndroidTV) return false;
+  return ref.watch(viewWidthProvider) >= twoPaneMinWidth;
 });
 
 /// 是否已连接（核心运行中）。

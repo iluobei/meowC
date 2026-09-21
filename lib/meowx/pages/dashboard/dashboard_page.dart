@@ -105,7 +105,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final wide = ref.watch(isWideLayoutProvider);
+    final wide = ref.watch(isTwoPaneProvider);
     final running = ref.watch(isRunningProvider);
     final upload = _MetricCard(
       icon: Icons.arrow_upward_rounded,

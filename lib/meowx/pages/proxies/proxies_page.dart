@@ -120,7 +120,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
   @override
   Widget build(BuildContext context) {
     final mm = context.mm;
-    final wide = ref.watch(isWideLayoutProvider);
+    final wide = ref.watch(isTwoPaneProvider);
     final groups = ref.watch(currentGroupsStateProvider.select((s) => s.value));
     final hasProfile = ref.watch(currentProfileProvider) != null;
     final size = ref.watch(meowSettingProvider.select((s) => s.nodeCardSize));

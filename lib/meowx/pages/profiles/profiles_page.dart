@@ -37,7 +37,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
   @override
   Widget build(BuildContext context) {
     final mm = context.mm;
-    final wide = ref.watch(isWideLayoutProvider);
+    final wide = ref.watch(isTwoPaneProvider);
     final loggedIn = ref.watch(isLoggedInProvider);
     final current = ref.watch(currentProfileProvider);
     final errorStrip = _error == null

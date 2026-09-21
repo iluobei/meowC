@@ -108,7 +108,7 @@ class MeowFont {
   static const caption2 = 11.0;
 
   static const monoFamily = 'monospace';
-  static const monoFallback = ['Consolas', 'Menlo', 'Roboto Mono', 'monospace'];
+  static const monoFallback = ['Consolas', 'Menlo', 'Roboto Mono', 'monospace', 'Twemoji'];
 
   static TextStyle mono({
     double size = footnote,

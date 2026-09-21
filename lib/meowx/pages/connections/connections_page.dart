@@ -65,7 +65,7 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
     super.dispose();
   }
 
-  bool get _visible => ref.read(meowTabProvider) == MeowTab.connections || ref.read(isWideLayoutProvider);
+  bool get _visible => ref.read(meowTabProvider) == MeowTab.connections;
 
   Future<void> _poll() async {
     if (!mounted || _polling) return;
@@ -107,7 +107,7 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
   @override
   Widget build(BuildContext context) {
     final mm = context.mm;
-    final wide = ref.watch(isWideLayoutProvider);
+    final wide = ref.watch(isTwoPaneProvider);
     final running = ref.watch(isRunningProvider);
     final header = Column(
       crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import 'tokens.dart';
@@ -26,6 +28,8 @@ ThemeData meowThemeData({
     brightness: brightness,
     colorScheme: scheme,
     fontFamily: fontFamily,
+    // Windows 自带字体没有国旗 emoji（显示成 CN / US 字母），回落到随包的 Twemoji
+    fontFamilyFallback: Platform.isWindows ? const ['Twemoji'] : null,
     pageTransitionsTheme: pageTransitionsTheme,
     scaffoldBackgroundColor: tokens.bg,
     canvasColor: tokens.bg,
