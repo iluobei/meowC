@@ -35,3 +35,7 @@
 ## 2026-09-21 · Windows 便携版
 - `lib/common/path.dart`：程序目录存在 `portable` 标记文件时，数据目录改为程序目录下的 `data/`。
 - `build.yaml`：Windows job 额外产出 `MeowX-<ver>-windows-amd64-portable.zip`。
+
+## 2026-09-21 · 宽屏布局
+- `lib/manager/app_manager.dart`：关掉 Bettbox 桌面侧栏（MeowX 壳自带图标栏）。
+- 首页（仅 Windows）：网速图位置换成「接管方式」卡（TUN / 系统代理，开关沿用 Bettbox 的 provider）。

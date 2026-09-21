@@ -32,7 +32,8 @@ class ProfilesPage extends ConsumerStatefulWidget {
 class _ProfilesPageState extends ConsumerState<ProfilesPage> {
   String? _error;
 
-  void _showError(Object e) => setState(() => _error = e is PanelException ? e.message : e.toString());
+  void _showError(Object e) =>
+      setState(() => _error = e is PanelException ? e.message : e.toString());
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +51,15 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
               children: [
                 Icon(Icons.error_outline_rounded, size: 16, color: mm.slow),
                 const SizedBox(width: 8),
-                Expanded(child: Text(_error!, style: TextStyle(fontSize: MeowFont.footnote, color: mm.slow))),
+                Expanded(
+                  child: Text(
+                    _error!,
+                    style: TextStyle(
+                      fontSize: MeowFont.footnote,
+                      color: mm.slow,
+                    ),
+                  ),
+                ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   icon: Icon(Icons.close_rounded, size: 16, color: mm.slow),
@@ -62,7 +71,9 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
 
     final account = _AccountCard(onError: _showError);
     final subs = loggedIn ? _MySubscriptionsCard(onError: _showError) : null;
-    final usage = current == null ? null : _UsageCard(profile: current, onError: _showError);
+    final usage = current == null
+        ? null
+        : _UsageCard(profile: current, onError: _showError);
     final import_ = _ImportCard(onError: _showError);
 
     if (!wide) {
@@ -83,7 +94,10 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(padding: EdgeInsets.only(right: 16, top: 16), child: PageTitle(S.profiles)),
+        const Padding(
+          padding: EdgeInsets.only(right: 16, top: 16),
+          child: PageTitle(S.profiles),
+        ),
         const SizedBox(height: 8),
         Expanded(
           child: TwoPane(
@@ -101,7 +115,10 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
               children: [
                 if (usage != null) ...[usage, const SizedBox(height: 12)],
                 import_,
-                if (errorStrip != null) ...[const SizedBox(height: 12), errorStrip],
+                if (errorStrip != null) ...[
+                  const SizedBox(height: 12),
+                  errorStrip,
+                ],
               ],
             ),
           ),
@@ -119,10 +136,14 @@ class _AccountCard extends ConsumerWidget {
   Future<void> _scan(BuildContext context, WidgetRef ref) async {
     final code = await BaseNavigator.push<String>(context, const ScanPage());
     if (code == null || code.isEmpty) return;
-    final link = Uri.tryParse(code) == null ? null : parseLoginLink(Uri.parse(code));
+    final link = Uri.tryParse(code) == null
+        ? null
+        : parseLoginLink(Uri.parse(code));
     try {
       if (link != null) {
-        await ref.read(accountActionsProvider).loginWithCode(host: link.base, code: link.code);
+        await ref
+            .read(accountActionsProvider)
+            .loginWithCode(host: link.base, code: link.code);
       } else if (code.startsWith('http')) {
         await globalState.appController.addProfileFormURL(code);
       } else {
@@ -147,24 +168,55 @@ class _AccountCard extends ConsumerWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: account.avatarUrl.isNotEmpty
-                    ? Image.network(account.avatarUrl, width: 32, height: 32, fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Image.asset('assets/images/icon_light.png', width: 32, height: 32))
-                    : Image.asset('assets/images/icon_light.png', width: 32, height: 32),
+                    ? Image.network(
+                        account.avatarUrl,
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Image.asset(
+                          'assets/images/icon_light.png',
+                          width: 32,
+                          height: 32,
+                        ),
+                      )
+                    : Image.asset(
+                        'assets/images/icon_light.png',
+                        width: 32,
+                        height: 32,
+                      ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(loggedIn ? account.nickname : '未登录',
-                        style: TextStyle(fontSize: MeowFont.headline, fontWeight: FontWeight.w600, color: mm.t1)),
-                    Text(loggedIn ? '实时同步已启用 · ${Uri.parse(account.host).host}' : '登录以启用实时同步与账户功能',
-                        maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: MeowFont.caption, color: mm.t3)),
+                    Text(
+                      loggedIn ? account.nickname : '未登录',
+                      style: TextStyle(
+                        fontSize: MeowFont.headline,
+                        fontWeight: FontWeight.w600,
+                        color: mm.t1,
+                      ),
+                    ),
+                    Text(
+                      loggedIn
+                          ? '实时同步已启用 · ${Uri.parse(account.host).host}'
+                          : '登录以启用实时同步与账户功能',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: MeowFont.caption,
+                        color: mm.t3,
+                      ),
+                    ),
                   ],
                 ),
               ),
               if (loggedIn)
-                TextButton(onPressed: () => ref.read(accountActionsProvider).logout(), child: const Text('退出')),
+                TextButton(
+                  onPressed: () => ref.read(accountActionsProvider).logout(),
+                  child: const Text('退出'),
+                ),
             ],
           ),
           if (!loggedIn) ...[
@@ -184,12 +236,14 @@ class _AccountCard extends ConsumerWidget {
                 Expanded(
                   child: system.isAndroid
                       ? OutlinedButton.icon(
-                          onPressed: () => showLoginSheet(context, ref, onError: onError),
+                          onPressed: () =>
+                              showLoginSheet(context, ref, onError: onError),
                           icon: const Icon(Icons.person_rounded, size: 18),
                           label: const Text('账号登录'),
                         )
                       : FilledButton.icon(
-                          onPressed: () => showLoginSheet(context, ref, onError: onError),
+                          onPressed: () =>
+                              showLoginSheet(context, ref, onError: onError),
                           icon: const Icon(Icons.person_rounded, size: 18),
                           label: const Text('账号登录'),
                         ),
@@ -197,7 +251,10 @@ class _AccountCard extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
-            Text('在桌面端「个人菜单 → 扫码登录」出示二维码，用手机扫一扫即可登录', style: TextStyle(fontSize: MeowFont.caption2, color: mm.t3)),
+            Text(
+              '在桌面端「个人菜单 → 扫码登录」出示二维码，用手机扫一扫即可登录',
+              style: TextStyle(fontSize: MeowFont.caption2, color: mm.t3),
+            ),
           ],
         ],
       ),
@@ -206,7 +263,11 @@ class _AccountCard extends ConsumerWidget {
 }
 
 /// 账号密码登录（含二步验证）。
-Future<void> showLoginSheet(BuildContext context, WidgetRef ref, {required void Function(Object) onError}) async {
+Future<void> showLoginSheet(
+  BuildContext context,
+  WidgetRef ref, {
+  required void Function(Object) onError,
+}) async {
   final account = ref.read(meowSettingProvider).account;
   final host = TextEditingController(text: account.host);
   final user = TextEditingController();
@@ -225,8 +286,15 @@ Future<void> showLoginSheet(BuildContext context, WidgetRef ref, {required void 
           try {
             final actions = ref.read(accountActionsProvider);
             final r = twoFactorToken == null
-                ? await actions.login(host: host.text, username: user.text.trim(), password: pass.text)
-                : await actions.complete2fa(twoFactorToken: twoFactorToken!, code: code.text.trim());
+                ? await actions.login(
+                    host: host.text,
+                    username: user.text.trim(),
+                    password: pass.text,
+                  )
+                : await actions.complete2fa(
+                    twoFactorToken: twoFactorToken!,
+                    code: code.text.trim(),
+                  );
             if (r is LoginNeeds2FA) {
               setState(() => twoFactorToken = r.twoFactorToken);
               return;
@@ -242,22 +310,53 @@ Future<void> showLoginSheet(BuildContext context, WidgetRef ref, {required void 
         }
 
         return Padding(
-          padding: EdgeInsets.fromLTRB(20, 16, 20, 20 + MediaQuery.viewInsetsOf(ctx).bottom),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            16,
+            20,
+            20 + MediaQuery.viewInsetsOf(ctx).bottom,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(twoFactorToken == null ? '登录妙妙屋X' : '二步验证',
-                  style: TextStyle(fontSize: MeowFont.title3, fontWeight: FontWeight.w600, color: mm.t1)),
+              Text(
+                twoFactorToken == null ? '登录妙妙屋X' : '二步验证',
+                style: TextStyle(
+                  fontSize: MeowFont.title3,
+                  fontWeight: FontWeight.w600,
+                  color: mm.t1,
+                ),
+              ),
               const SizedBox(height: 12),
               if (twoFactorToken == null) ...[
-                TextField(controller: host, decoration: const InputDecoration(labelText: '主控地址', hintText: 'https://panel.example.com'), keyboardType: TextInputType.url),
+                TextField(
+                  controller: host,
+                  decoration: const InputDecoration(
+                    labelText: '主控地址',
+                    hintText: 'https://panel.example.com',
+                  ),
+                  keyboardType: TextInputType.url,
+                ),
                 const SizedBox(height: 8),
-                TextField(controller: user, decoration: const InputDecoration(labelText: '用户名')),
+                TextField(
+                  controller: user,
+                  decoration: const InputDecoration(labelText: '用户名'),
+                ),
                 const SizedBox(height: 8),
-                TextField(controller: pass, decoration: const InputDecoration(labelText: '密码'), obscureText: true, onSubmitted: (_) => submit()),
+                TextField(
+                  controller: pass,
+                  decoration: const InputDecoration(labelText: '密码'),
+                  obscureText: true,
+                  onSubmitted: (_) => submit(),
+                ),
               ] else
-                TextField(controller: code, decoration: const InputDecoration(labelText: '验证码 / 恢复码'), autofocus: true, onSubmitted: (_) => submit()),
+                TextField(
+                  controller: code,
+                  decoration: const InputDecoration(labelText: '验证码 / 恢复码'),
+                  autofocus: true,
+                  onSubmitted: (_) => submit(),
+                ),
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
@@ -280,7 +379,8 @@ class _MySubscriptionsCard extends ConsumerStatefulWidget {
   final void Function(Object) onError;
 
   @override
-  ConsumerState<_MySubscriptionsCard> createState() => _MySubscriptionsCardState();
+  ConsumerState<_MySubscriptionsCard> createState() =>
+      _MySubscriptionsCardState();
 }
 
 class _MySubscriptionsCardState extends ConsumerState<_MySubscriptionsCard> {
@@ -289,7 +389,9 @@ class _MySubscriptionsCardState extends ConsumerState<_MySubscriptionsCard> {
     super.initState();
     final v = ref.read(remoteSubsProvider);
     if (v.hasValue && (v.value?.isEmpty ?? true)) {
-      Future.microtask(() => ref.read(accountActionsProvider).refreshSubscriptions());
+      Future.microtask(
+        () => ref.read(accountActionsProvider).refreshSubscriptions(),
+      );
     }
   }
 
@@ -304,57 +406,110 @@ class _MySubscriptionsCardState extends ConsumerState<_MySubscriptionsCard> {
         children: [
           Row(
             children: [
-              Text('我的订阅', style: TextStyle(fontSize: MeowFont.headline, fontWeight: FontWeight.w600, color: mm.t1)),
+              Text(
+                '我的订阅',
+                style: TextStyle(
+                  fontSize: MeowFont.headline,
+                  fontWeight: FontWeight.w600,
+                  color: mm.t1,
+                ),
+              ),
               const Spacer(),
               RoundGlassButton(
                 icon: Icons.refresh_rounded,
                 busy: subs.isLoading,
-                onTap: () => ref.read(accountActionsProvider).refreshSubscriptions(),
+                onTap: () =>
+                    ref.read(accountActionsProvider).refreshSubscriptions(),
               ),
             ],
           ),
           const SizedBox(height: 8),
           switch (subs) {
-            AsyncData(:final value) when value.isEmpty => Text('账户下暂无订阅（或主控未放行 /api/subscriptions）', style: TextStyle(fontSize: MeowFont.footnote, color: mm.t3)),
+            AsyncData(:final value) when value.isEmpty => Text(
+              '账户下暂无订阅（或主控未放行 /api/subscriptions）',
+              style: TextStyle(fontSize: MeowFont.footnote, color: mm.t3),
+            ),
             AsyncData(:final value) => Column(
-                children: [
-                  for (final s in value)
-                    InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: importing != null
-                          ? null
-                          : () async {
-                              try {
-                                await ref.read(accountActionsProvider).importSubscription(s);
-                              } catch (e) {
-                                widget.onError(e);
-                              }
-                            },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(s.name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(fontSize: MeowFont.subheadline, fontWeight: FontWeight.w500, color: mm.t1)),
-                                  Text(_subtitle(s), style: MeowFont.mono(size: MeowFont.caption2, color: mm.t3)),
-                                ],
-                              ),
+              children: [
+                for (final s in value)
+                  InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: importing != null
+                        ? null
+                        : () async {
+                            try {
+                              await ref
+                                  .read(accountActionsProvider)
+                                  .importSubscription(s);
+                            } catch (e) {
+                              widget.onError(e);
+                            }
+                          },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  s.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: MeowFont.subheadline,
+                                    fontWeight: FontWeight.w500,
+                                    color: mm.t1,
+                                  ),
+                                ),
+                                Text(
+                                  _subtitle(s),
+                                  style: MeowFont.mono(
+                                    size: MeowFont.caption2,
+                                    color: mm.t3,
+                                  ),
+                                ),
+                              ],
                             ),
-                            importing == s.name
-                                ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: mm.accent))
-                                : Icon(Icons.download_rounded, size: 20, color: mm.accent),
-                          ],
-                        ),
+                          ),
+                          importing == s.name
+                              ? SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: mm.accent,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.download_rounded,
+                                  size: 20,
+                                  color: mm.accent,
+                                ),
+                        ],
                       ),
                     ),
-                ],
+                  ),
+              ],
+            ),
+            AsyncError(:final error) => Text(
+              '拉取失败：$error',
+              style: TextStyle(fontSize: MeowFont.footnote, color: mm.slow),
+            ),
+            _ => Padding(
+              padding: const EdgeInsets.all(8),
+              child: Center(
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: mm.t3,
+                  ),
+                ),
               ),
-            AsyncError(:final error) => Text('拉取失败：$error', style: TextStyle(fontSize: MeowFont.footnote, color: mm.slow)),
-            _ => Padding(padding: const EdgeInsets.all(8), child: Center(child: SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: mm.t3)))),
+            ),
           },
         ],
       ),
@@ -364,12 +519,16 @@ class _MySubscriptionsCardState extends ConsumerState<_MySubscriptionsCard> {
   static String _subtitle(RemoteSubscription s) {
     final parts = <String>[];
     if (s.trafficTotal != null && s.trafficTotal! > 0) {
-      parts.add('已用 ${fmtSize(s.trafficUsed ?? 0)} / ${fmtSize(s.trafficTotal!)}');
+      parts.add(
+        '已用 ${fmtSize(s.trafficUsed ?? 0)} / ${fmtSize(s.trafficTotal!)}',
+      );
     } else if (s.trafficUsed != null) {
       parts.add('已用 ${fmtSize(s.trafficUsed!)}');
     }
     if (s.expireAt != null) parts.add('到期 ${fmtDate(s.expireAt!.toLocal())}');
-    return parts.isEmpty ? (s.filename.isNotEmpty ? s.filename : '—') : parts.join(' · ');
+    return parts.isEmpty
+        ? (s.filename.isNotEmpty ? s.filename : '—')
+        : parts.join(' · ');
   }
 }
 
@@ -392,8 +551,8 @@ class _UsageCard extends ConsumerWidget {
     final expireText = expire <= 0
         ? '未知到期'
         : isPermanentExpire(expire)
-            ? '永久'
-            : '到期 ${fmtDate(DateTime.fromMillisecondsSinceEpoch(expire * 1000))}';
+        ? '永久'
+        : '到期 ${fmtDate(DateTime.fromMillisecondsSinceEpoch(expire * 1000))}';
     final profiles = ref.watch(profilesProvider);
     return GlassCard(
       radius: 18,
@@ -404,31 +563,58 @@ class _UsageCard extends ConsumerWidget {
           Row(
             children: [
               Expanded(
-                child: Text(profile.label ?? profile.id, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: MeowFont.headline, fontWeight: FontWeight.w600, color: mm.t1)),
+                child: Text(
+                  profile.label ?? profile.id,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: MeowFont.headline,
+                    fontWeight: FontWeight.w600,
+                    color: mm.t1,
+                  ),
+                ),
               ),
               const SizedBox(width: 8),
               TypeBadge('当前', color: mm.accent),
-              _ProfileMenu(profile: profile, others: profiles.where((p) => p.id != profile.id).toList(), onError: onError),
+              _ProfileMenu(
+                profile: profile,
+                others: profiles.where((p) => p.id != profile.id).toList(),
+                onError: onError,
+              ),
             ],
           ),
           const SizedBox(height: 10),
           if (hasUsage) ...[
             Text(
-              total > 0 ? '${fmtSize(used)} / ${fmtSize(total)}' : '${fmtSize(used)} / ${S.unlimited}',
-              style: MeowFont.mono(size: MeowFont.title3, weight: FontWeight.w600, color: mm.t1),
+              total > 0
+                  ? '${fmtSize(used)} / ${fmtSize(total)}'
+                  : '${fmtSize(used)} / ${S.unlimited}',
+              style: MeowFont.mono(
+                size: MeowFont.title3,
+                weight: FontWeight.w600,
+                color: mm.t1,
+              ),
             ),
             const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(3),
-              child: LinearProgressIndicator(value: frac, minHeight: 6, backgroundColor: mm.t3.withValues(alpha: 0.15), color: frac > 0.9 ? mm.slow : mm.accent),
+              child: LinearProgressIndicator(
+                value: frac,
+                minHeight: 6,
+                backgroundColor: mm.t3.withValues(alpha: 0.15),
+                color: frac > 0.9 ? mm.slow : mm.accent,
+              ),
             ),
             const SizedBox(height: 8),
           ],
           Text(
             [
-              if (hasUsage) expireText else (profile.url.isEmpty ? '本地配置' : '订阅未提供用量信息'),
-              if (profile.lastUpdateDate != null) '更新于 ${fmtRelative(profile.lastUpdateDate!)}',
+              if (hasUsage)
+                expireText
+              else
+                (profile.url.isEmpty ? '本地配置' : '订阅未提供用量信息'),
+              if (profile.lastUpdateDate != null)
+                '更新于 ${fmtRelative(profile.lastUpdateDate!)}',
             ].join(' · '),
             style: TextStyle(fontSize: MeowFont.caption, color: mm.t3),
           ),
@@ -440,7 +626,11 @@ class _UsageCard extends ConsumerWidget {
 
 /// 溢出菜单：切换到 X / 刷新 / 删除
 class _ProfileMenu extends ConsumerWidget {
-  const _ProfileMenu({required this.profile, required this.others, required this.onError});
+  const _ProfileMenu({
+    required this.profile,
+    required this.others,
+    required this.onError,
+  });
   final Profile profile;
   final List<Profile> others;
   final void Function(Object) onError;
@@ -466,9 +656,22 @@ class _ProfileMenu extends ConsumerWidget {
         }
       },
       itemBuilder: (_) => [
-        for (final p in others) PopupMenuItem(value: 'switch:${p.id}', child: Text('切换到 ${p.label ?? p.id}', maxLines: 1, overflow: TextOverflow.ellipsis)),
-        if (profile.url.isNotEmpty) const PopupMenuItem(value: 'refresh', child: Text('刷新')),
-        if (!isDirectProfile(profile.id)) PopupMenuItem(value: 'delete', child: Text('删除', style: TextStyle(color: mm.slow))),
+        for (final p in others)
+          PopupMenuItem(
+            value: 'switch:${p.id}',
+            child: Text(
+              '切换到 ${p.label ?? p.id}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        if (profile.url.isNotEmpty)
+          const PopupMenuItem(value: 'refresh', child: Text('刷新')),
+        if (!isDirectProfile(profile.id))
+          PopupMenuItem(
+            value: 'delete',
+            child: Text('删除', style: TextStyle(color: mm.slow)),
+          ),
       ],
     );
   }
@@ -500,7 +703,10 @@ class _ImportCardState extends ConsumerState<_ImportCard> {
     try {
       await globalState.appController.addProfileFormURL(url);
       // 与 iOS 一致：手动导入的订阅直接成为当前档（Bettbox 只在没有当前档时才切）
-      final added = ref.read(profilesProvider).where((p) => p.url == url).firstOrNull;
+      final added = ref
+          .read(profilesProvider)
+          .where((p) => p.url == url)
+          .firstOrNull;
       if (added != null && ref.read(currentProfileIdProvider) != added.id) {
         ref.read(currentProfileIdProvider.notifier).value = added.id;
       }
@@ -520,7 +726,11 @@ class _ImportCardState extends ConsumerState<_ImportCard> {
       if (!mounted) return;
       await BaseNavigator.push<String>(
         context,
-        EditorPage(title: profile.label ?? profile.id, content: content, readOnly: true),
+        EditorPage(
+          title: profile.label ?? profile.id,
+          content: content,
+          readOnly: true,
+        ),
         maintainState: false,
       );
     } catch (e) {
@@ -541,7 +751,14 @@ class _ImportCardState extends ConsumerState<_ImportCard> {
             children: [
               Icon(Icons.system_update_alt_rounded, size: 18, color: mm.accent),
               const SizedBox(width: 8),
-              Text('导入订阅节点', style: TextStyle(fontSize: MeowFont.headline, fontWeight: FontWeight.w600, color: mm.t1)),
+              Text(
+                '导入订阅节点',
+                style: TextStyle(
+                  fontSize: MeowFont.headline,
+                  fontWeight: FontWeight.w600,
+                  color: mm.t1,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -557,7 +774,10 @@ class _ImportCardState extends ConsumerState<_ImportCard> {
               isDense: true,
               filled: true,
               fillColor: mm.t1.withValues(alpha: 0.05),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
             ),
             keyboardType: TextInputType.url,
             onSubmitted: (_) => _import(),
@@ -566,16 +786,25 @@ class _ImportCardState extends ConsumerState<_ImportCard> {
           Row(
             children: [
               Expanded(
-                child: FilledButton(onPressed: _busy ? null : _import, child: Text(_busy ? '导入中…' : '导入订阅')),
+                child: FilledButton(
+                  onPressed: _busy ? null : _import,
+                  child: Text(_busy ? '导入中…' : '导入订阅'),
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
-                child: FilledButton.tonal(onPressed: hasCurrent ? _view : null, child: const Text('查看配置')),
+                child: FilledButton.tonal(
+                  onPressed: hasCurrent ? _view : null,
+                  child: const Text('查看配置'),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text('也支持 clash://install-config 深链一键导入', style: TextStyle(fontSize: MeowFont.caption2, color: mm.t3)),
+          Text(
+            '也支持 clash://install-config 深链一键导入',
+            style: TextStyle(fontSize: MeowFont.caption2, color: mm.t3),
+          ),
         ],
       ),
     );
@@ -592,51 +821,66 @@ class _ProfileList extends ConsumerWidget {
     final profiles = withDirectProfileLast(ref.watch(profilesProvider));
     final currentId = ref.watch(currentProfileIdProvider);
     if (profiles.isEmpty) return const SizedBox.shrink();
-    return GlassCard(
-      radius: 18,
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Column(
-        children: [
-          for (final p in profiles)
-            InkWell(
-              onTap: () => ref.read(currentProfileIdProvider.notifier).value = p.id,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 8, 4, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(p.label ?? p.id, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(fontSize: MeowFont.subheadline, fontWeight: FontWeight.w500, color: mm.t1)),
+    return Column(
+      children: [
+        for (final p in profiles)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 9),
+            child: GlassCard(
+              radius: 14,
+              padding: const EdgeInsets.fromLTRB(14, 10, 4, 10),
+              border: p.id == currentId ? Border.all(color: mm.accent) : null,
+              onTap: () =>
+                  ref.read(currentProfileIdProvider.notifier).value = p.id,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                p.label ?? p.id,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: MeowFont.subheadline,
+                                  fontWeight: FontWeight.w500,
+                                  color: mm.t1,
+                                ),
                               ),
-                              if (p.id == currentId) ...[const SizedBox(width: 6), TypeBadge('当前', color: mm.accent)],
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(2),
-                            child: LinearProgressIndicator(
-                              value: _frac(p),
-                              minHeight: 4,
-                              backgroundColor: mm.t3.withValues(alpha: 0.15),
-                              color: mm.pur,
                             ),
+                            if (p.id == currentId) ...[
+                              const SizedBox(width: 6),
+                              TypeBadge('当前', color: mm.accent),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(2),
+                          child: LinearProgressIndicator(
+                            value: _frac(p),
+                            minHeight: 4,
+                            backgroundColor: mm.t3.withValues(alpha: 0.15),
+                            color: mm.pur,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                    _ProfileMenu(profile: p, others: profiles.where((o) => o.id != p.id).toList(), onError: (_) {}),
-                  ],
-                ),
+                  ),
+                  _ProfileMenu(
+                    profile: p,
+                    others: profiles.where((o) => o.id != p.id).toList(),
+                    onError: (_) {},
+                  ),
+                ],
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 

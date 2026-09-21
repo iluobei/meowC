@@ -149,7 +149,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     const dnsCard = _DnsModeCard();
     const exitIp = _ExitIpCard();
     const main = _ConnectionCard();
-    final speed = _SpeedCard(chartHeight: wide ? 132 : 84);
+    // Windows：网速图的位置换成「TUN / 系统代理」接管卡（桌面端专有，两个开关沿用 Bettbox 的实现）
+    // MEOWX_PREVIEW_DESKTOP：只用于在 Android 模拟器上预览这张桌面卡，正式包不带
+    final Widget speed = (system.isWindows || const bool.fromEnvironment('MEOWX_PREVIEW_DESKTOP')) ? const _TakeoverCard() : _SpeedCard(chartHeight: wide ? 132 : 84);
 
     if (!wide) {
       return ListView(
@@ -319,6 +321,87 @@ class _DnsModeCard extends ConsumerWidget {
           globalState.appController.applyProfileDebounce();
         }
       },
+    );
+  }
+}
+
+/// Windows 专用：TUN（虚拟网卡，接管全部流量，需管理员 / helper 服务）与系统代理两个开关 + 当前网速。
+class _TakeoverCard extends ConsumerWidget {
+  const _TakeoverCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mm = context.mm;
+    final tun = ref.watch(patchClashConfigProvider.select((s) => s.tun.enable));
+    final sysProxy = ref.watch(networkSettingProvider.select((s) => s.systemProxy));
+    final port = ref.watch(patchClashConfigProvider.select((s) => s.mixedPort));
+    final traffics = ref.watch(trafficsProvider).list;
+    final last = traffics.isEmpty ? null : traffics.last;
+
+    Widget tile({required IconData icon, required Color color, required String title, required String desc, required bool value, required ValueChanged<bool> onChanged}) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+        decoration: BoxDecoration(color: mm.t1.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(12)),
+        child: Row(
+          children: [
+            Container(
+              width: 29,
+              height: 29,
+              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(7)),
+              child: Icon(icon, size: 17, color: Colors.white),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(fontSize: MeowFont.subheadline, fontWeight: FontWeight.w600, color: mm.t1)),
+                  Text(desc, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: MeowFont.caption2, color: mm.t3)),
+                ],
+              ),
+            ),
+            Switch.adaptive(value: value, onChanged: onChanged),
+          ],
+        ),
+      );
+    }
+
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.hub_rounded, size: MeowFont.footnote + 2, color: mm.accent),
+              const SizedBox(width: 5),
+              Text('接管方式', style: TextStyle(fontSize: MeowFont.caption, color: mm.t2)),
+              const Spacer(),
+              Text('↑ ${fmtRate(last?.up.value ?? 0)}', style: MeowFont.mono(size: MeowFont.caption2, weight: FontWeight.w600, color: mm.accent)),
+              const SizedBox(width: 8),
+              Text('↓ ${fmtRate(last?.down.value ?? 0)}', style: MeowFont.mono(size: MeowFont.caption2, weight: FontWeight.w600, color: mm.down)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          tile(
+            icon: Icons.lan_rounded,
+            color: mm.pur,
+            title: '虚拟网卡（TUN）',
+            desc: '接管全部应用的流量 · 需要管理员权限',
+            value: tun,
+            onChanged: (v) => ref.read(patchClashConfigProvider.notifier).updateState((s) => s.copyWith.tun(enable: v)),
+          ),
+          const SizedBox(height: 8),
+          tile(
+            icon: Icons.settings_ethernet_rounded,
+            color: mm.good,
+            title: '系统代理',
+            desc: '把系统 HTTP 代理指向 127.0.0.1:$port',
+            value: sysProxy,
+            onChanged: (v) => ref.read(networkSettingProvider.notifier).updateState((s) => s.copyWith(systemProxy: v)),
+          ),
+        ],
+      ),
     );
   }
 }
