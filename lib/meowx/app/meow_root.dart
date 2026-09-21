@@ -51,15 +51,7 @@ class _MeowRootState extends ConsumerState<MeowRoot> {
       (prev, next) => _syncRealtime(next),
       fireImmediately: true,
     );
-    _profileSub = ref.listenManual(currentProfileIdProvider, (prev, next) {
-      // 切到内置直连档 → mode=direct；从它切走 → 恢复 rule
-      final c = globalState.appController;
-      if (isDirectProfile(next) && ref.read(patchClashConfigProvider).mode != Mode.direct) {
-        c.changeMode(Mode.direct);
-      } else if (isDirectProfile(prev) && !isDirectProfile(next) && ref.read(patchClashConfigProvider).mode == Mode.direct) {
-        c.changeMode(Mode.rule);
-      }
-    });
+    _profileSub = ref.listenManual(currentProfileIdProvider, (prev, next) => _syncDirectMode(next));
     // 等 Bettbox 把偏好加载完（isInit）再补内置直连档，否则会被随后加载的配置覆盖
     _initSub = ref.listenManual(initProvider, (prev, next) {
       if (next) unawaited(_ensureDirect());
@@ -75,6 +67,24 @@ class _MeowRootState extends ConsumerState<MeowRoot> {
       }
       _pushBettboxPage(next);
     });
+  }
+
+  /// 切到内置直连档 → mode=direct；不在直连档上而 direct 是当初自动设的 → 恢复 rule。
+  /// 按状态对账（启动时也跑一次），不依赖「恰好监听到从直连档切走的那一下」——漏一次就会一直停在直连、所有规则看起来都走 DIRECT。
+  void _syncDirectMode(String? profileId) {
+    final c = globalState.appController;
+    final mode = ref.read(patchClashConfigProvider).mode;
+    final settings = ref.read(meowSettingProvider.notifier);
+    if (isDirectProfile(profileId)) {
+      // 直连档上的 direct 一律算自动的（在它上面手选直连没有意义），旧版本留下的状态也借此补上标记
+      if (!ref.read(meowSettingProvider).autoDirectMode) {
+        settings.updateState((s) => s.copyWith(autoDirectMode: true));
+      }
+      if (mode != Mode.direct) c.changeMode(Mode.direct);
+    } else if (profileId != null && ref.read(meowSettingProvider).autoDirectMode) {
+      settings.updateState((s) => s.copyWith(autoDirectMode: false));
+      if (mode == Mode.direct) c.changeMode(Mode.rule);
+    }
   }
 
   Future<void> _ensureDirect() async {
@@ -93,6 +103,7 @@ class _MeowRootState extends ConsumerState<MeowRoot> {
       if (mounted && ref.read(currentProfileIdProvider) == null) {
         ref.read(currentProfileIdProvider.notifier).value = directProfileId;
       }
+      if (mounted) _syncDirectMode(ref.read(currentProfileIdProvider));
     } catch (e) {
       commonPrint.log('ensureDirectProfile failed: $e');
     }

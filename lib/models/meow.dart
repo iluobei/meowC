@@ -137,6 +137,9 @@ abstract class MeowSettings with _$MeowSettings {
     @Default(ProxyLayout.list)
     ProxyLayout proxyLayout,
 
+    /// 当前的 mode=direct 是切到内置直连档时自动设的（不是用户手选）：离开直连档时据此恢复 rule
+    @Default(false) bool autoDirectMode,
+
     /// 首页关掉的卡片（HomeCard.name）
     @Default([]) List<String> homeHiddenCards,
 

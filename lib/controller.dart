@@ -463,7 +463,9 @@ class AppController {
 
   Future<void> addProfile(Profile profile) async {
     _ref.read(profilesProvider.notifier).setProfile(profile);
-    if (_ref.read(currentProfileIdProvider) != null) return;
+    // MeowX：内置直连档只是「还没有订阅」时的占位，当前是它等同于没有当前档
+    final current = _ref.read(currentProfileIdProvider);
+    if (current != null && !isDirectProfile(current)) return;
     _ref.read(currentProfileIdProvider.notifier).value = profile.id;
   }
 

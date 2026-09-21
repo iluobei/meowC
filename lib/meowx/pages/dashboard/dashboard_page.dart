@@ -399,19 +399,114 @@ class _DnsModeCard extends ConsumerWidget {
 }
 
 /// Windows 专用：TUN（虚拟网卡，接管全部流量，需管理员 / helper 服务）与系统代理两个开关 + 当前网速。
-class _TakeoverCard extends ConsumerWidget {
+class _TakeoverCard extends ConsumerStatefulWidget {
   const _TakeoverCard();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_TakeoverCard> createState() => _TakeoverCardState();
+}
+
+class _TakeoverCardState extends ConsumerState<_TakeoverCard> {
+  /// Windows 的 TUN 要靠 MeowX 服务（helper）以 SYSTEM 拉起核心；已是管理员身份运行则不需要。
+  /// null = 还没查 / 非 Windows（不检测）。
+  WindowsHelperServiceStatus? _service;
+  bool _admin = false;
+  bool _installing = false;
+
+  bool get _tunReady => windows == null || _admin || _service == WindowsHelperServiceStatus.running;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_checkService());
+  }
+
+  Future<void> _checkService() async {
+    final w = windows;
+    if (w == null) return;
+    try {
+      final admin = await system.checkIsAdmin();
+      final status = await w.checkService();
+      if (mounted) {
+        setState(() {
+          _admin = admin;
+          _service = status;
+        });
+      }
+    } catch (e) {
+      commonPrint.log('check helper service failed: $e');
+    }
+  }
+
+  /// 安装并启动服务（弹一次 UAC）。成功返回 true。
+  Future<bool> _installService() async {
+    final w = windows;
+    if (w == null) return true;
+    setState(() => _installing = true);
+    try {
+      final ok = await w.registerService();
+      await _checkService();
+      if (!ok) globalState.showNotifier('MeowX 服务安装失败或已取消授权，TUN 未开启');
+      return ok;
+    } finally {
+      if (mounted) setState(() => _installing = false);
+    }
+  }
+
+  Future<void> _setTun(bool on) async {
+    if (on && !_tunReady) {
+      await _checkService();   // 可能刚被安装包 / 别的窗口装好
+      if (!mounted) return;
+      if (!_tunReady) {
+        final go = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('安装 MeowX 服务'),
+            content: const Text('虚拟网卡（TUN）需要 MeowX 服务以系统权限运行核心。\n安装只需管理员授权一次，之后开关 TUN 不再弹窗。'),
+            actions: [
+              TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('取消')),
+              FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('安装并开启')),
+            ],
+          ),
+        );
+        if (go != true || !mounted) return;
+        if (!await _installService() || !mounted) return;
+      }
+    }
+    ref.read(patchClashConfigProvider.notifier).updateState((s) => s.copyWith.tun(enable: on));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final mm = context.mm;
     final tun = ref.watch(patchClashConfigProvider.select((s) => s.tun.enable));
+    final realTun = ref.watch(realTunEnableProvider);
+    final running = ref.watch(isRunningProvider);
     final sysProxy = ref.watch(networkSettingProvider.select((s) => s.systemProxy));
     final port = ref.watch(patchClashConfigProvider.select((s) => s.mixedPort));
     final traffics = ref.watch(trafficsProvider).list;
     final last = traffics.isEmpty ? null : traffics.last;
 
-    Widget tile({required IconData icon, required Color color, required String title, required String desc, required bool value, required ValueChanged<bool> onChanged}) {
+    final String tunDesc;
+    if (_installing) {
+      tunDesc = '正在安装 MeowX 服务…';
+    } else if (!_tunReady && _service != null) {
+      tunDesc = _service == WindowsHelperServiceStatus.presence ? 'MeowX 服务未运行 · 开启时修复' : '未安装 MeowX 服务 · 开启时安装';
+    } else if (tun && running && !realTun) {
+      tunDesc = '未生效：没有拿到管理员权限';
+    } else {
+      tunDesc = '接管全部应用的流量${_admin ? ' · 管理员身份' : (_service == WindowsHelperServiceStatus.running ? ' · 服务已就绪' : '')}';
+    }
+
+    Widget tile({
+      required IconData icon,
+      required Color color,
+      required String title,
+      required String desc,
+      required bool value,
+      required ValueChanged<bool>? onChanged,
+      bool warn = false,
+    }) {
       return Container(
         padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
         decoration: BoxDecoration(color: mm.t1.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(12)),
@@ -429,7 +524,7 @@ class _TakeoverCard extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title, style: TextStyle(fontSize: MeowFont.subheadline, fontWeight: FontWeight.w600, color: mm.t1)),
-                  Text(desc, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: MeowFont.caption2, color: mm.t3)),
+                  Text(desc, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: MeowFont.caption2, color: warn ? mm.mid : mm.t3)),
                 ],
               ),
             ),
@@ -460,9 +555,10 @@ class _TakeoverCard extends ConsumerWidget {
             icon: Icons.lan_rounded,
             color: mm.pur,
             title: '虚拟网卡（TUN）',
-            desc: '接管全部应用的流量 · 需要管理员权限',
+            desc: tunDesc,
+            warn: (!_tunReady && _service != null) || (tun && running && !realTun),
             value: tun,
-            onChanged: (v) => ref.read(patchClashConfigProvider.notifier).updateState((s) => s.copyWith.tun(enable: v)),
+            onChanged: _installing ? null : (v) => unawaited(_setTun(v)),
           ),
           const SizedBox(height: 8),
           tile(
@@ -622,7 +718,10 @@ class _ConnectionCardState extends ConsumerState<_ConnectionCard> {
           const SizedBox(height: 12),
           _ModeSegment(
             mode: mode,
-            onChanged: (m) => globalState.appController.changeMode(m),
+            onChanged: (m) {
+              ref.read(meowSettingProvider.notifier).updateState((s) => s.copyWith(autoDirectMode: false));
+              globalState.appController.changeMode(m);
+            },
           ),
         ],
       ),
@@ -682,9 +781,12 @@ class _SubscriptionBar extends ConsumerWidget {
                 child: PopupMenuButton<String>(
                   tooltip: '',
                   padding: EdgeInsets.zero,
+                  // 改 currentProfileId 即切换（ClashManager 监听后自动重载）。
+                  // 之前调的 setProfileAndAutoApply 只是「更新并重载当前档」，选了别的订阅不会切过去。
                   onSelected: (id) {
-                    final p = profiles.getProfile(id);
-                    if (p != null) globalState.appController.setProfileAndAutoApply(p);
+                    if (profiles.getProfile(id) != null && ref.read(currentProfileIdProvider) != id) {
+                      ref.read(currentProfileIdProvider.notifier).value = id;
+                    }
                   },
                   itemBuilder: (_) => [
                     for (final p in profiles)
