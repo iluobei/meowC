@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
@@ -79,8 +80,33 @@ const _cardRadius = 26.0;
 const _cardPadding = 14.0;
 const _gridSpacing = 9.0;
 
-/// 节点格高度：两行（名 + 副标题）。
-const _cellHeight = 58.0;
+/// 节点格高度：两行（名 + 副标题 / 延迟胶囊）。网格是懒加载、定高的（mainAxisExtent），不能让格子自己撑开，
+/// 所以按主题字样和文字缩放量出来——之前写死 58：文字继承 M3 bodyMedium 的行高 1.43，1.0 倍时内容就比格子高 9px
+/// （被底部 padding 盖住），字号调大一档（≥1.05）第二行就越出格子底边。
+double _nodeCellExtent(BuildContext context) {
+  final scaler = MediaQuery.textScalerOf(context);
+  final base = DefaultTextStyle.of(context).style;
+  double lineHeight(TextStyle style, String sample) {
+    final tp = TextPainter(
+      text: TextSpan(text: sample, style: base.merge(style)),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+      maxLines: 1,
+    )..layout();
+    final h = tp.height;
+    tp.dispose();
+    return h;
+  }
+
+  // 样例带中文和国旗：CJK 字体与彩色 emoji 的行高都比拉丁字母高
+  final name = math.max(
+    lineHeight(const TextStyle(fontSize: MeowFont.subheadline, fontWeight: FontWeight.w500), 'Ag节点🇺🇸'),
+    18.0,   // 奖牌 / 解锁徽标 14 + 上下 padding 2+2
+  );
+  final chip = lineHeight(MeowFont.mono(size: MeowFont.caption2, weight: FontWeight.bold), '88 ms超时') + 4;   // LatencyChip 上下 padding 2+2
+  final sub = lineHeight(MeowFont.mono(size: MeowFont.caption2), 'vless · reality 直连');
+  return (10 + name + 4 + math.max(chip, sub) + 10 + 3).ceilToDouble();   // 上下 padding 10、行距 4、选中描边 1.5×2
+}
 
 /// 代理页。手机端整页是一个 CustomScrollView：每个组卡 = DecoratedSliver（卡片底）+ 组头 + 懒加载的 SliverGrid，
 /// 300 个节点展开时只构建可见的格子（之前 shrinkWrap GridView 一次建全部，展开 / 选节点都会掉帧）。
@@ -557,7 +583,8 @@ class _GroupChip extends StatelessWidget {
   }
 }
 
-/// 标签布局里组卡的头（上圆角）：TypeBadge + 成员数 + 当前选中 + 延迟 + 整组测速。组名已经在标签上，这里不重复。
+/// 标签布局里组卡的头（上圆角）：TypeBadge + 成员数 + 整组测速 / 当前选中 + 延迟。组名已经在标签上，这里不重复。
+/// 分两行（同收起态 _GroupHead）：之前挤一行，奖牌 / 解锁 / 延迟 / 闪电都定宽，窄屏 + 大字时溢出、闪电被挤出卡片。
 class _TabGroupHead extends ConsumerWidget {
   const _TabGroupHead({required this.group});
   final Group group;
@@ -577,41 +604,61 @@ class _TabGroupHead extends ConsumerWidget {
           top: Radius.circular(_cardRadius),
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TypeBadge(badge.label, color: badge.color),
-          const SizedBox(width: 6),
-          Text(
-            '${group.all.length}',
-            style: MeowFont.mono(size: MeowFont.caption2, color: mm.t3),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            width: 7,
-            height: 7,
-            decoration: BoxDecoration(color: mm.accent, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              selectedName.isEmpty ? S.currentSelected : selectedName,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2),
-            ),
-          ),
-          _CurrentBadges(groupName: group.name),
-          if (selectedName.isNotEmpty)
-            LatencyChip(
-              ref.watch(
-                getDelayProvider(
-                  proxyName: selectedName,
-                  testUrl: group.testUrl,
-                ),
+          Row(
+            children: [
+              TypeBadge(badge.label, color: badge.color),
+              const SizedBox(width: 6),
+              Text(
+                '${group.all.length}',
+                style: MeowFont.mono(size: MeowFont.caption2, color: mm.t3),
               ),
-              mode: mode,
+              const Spacer(),
+              _GroupTestButton(group: group),
+            ],
+          ),
+          const SizedBox(height: 4),
+          // 容器右边距只留 6 给闪电按钮的点击区，这一行补回卡片边距
+          Padding(
+            padding: const EdgeInsets.only(right: _cardPadding - 6),
+            child: Row(
+              children: [
+                Container(
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: mm.accent,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    selectedName.isEmpty ? S.currentSelected : selectedName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: MeowFont.subheadline,
+                      color: mm.t2,
+                    ),
+                  ),
+                ),
+                _CurrentBadges(groupName: group.name),
+                if (selectedName.isNotEmpty)
+                  LatencyChip(
+                    ref.watch(
+                      getDelayProvider(
+                        proxyName: selectedName,
+                        testUrl: group.testUrl,
+                      ),
+                    ),
+                    mode: mode,
+                  ),
+              ],
             ),
-          _GroupTestButton(group: group),
+          ),
         ],
       ),
     );
@@ -702,33 +749,62 @@ class _GroupHeader extends ConsumerWidget {
           const SizedBox(width: 8),
         ],
         // 名 + 徽标 + 成员数占满左侧，闪电 / 箭头贴右（之前 Flexible 与 Spacer 平分空间，右侧按钮停在半路）
+        // TypeBadge 与成员数定宽，窄屏 + 大字时组名被挤成省略号、极端时溢出：量出两者宽度，剩给组名不到 2 个字就藏成员数
         Expanded(
-          child: Row(
-            children: [
-              Flexible(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: onToggle,
-                  child: Text(
-                    group.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: MeowFont.headline,
-                      fontWeight: FontWeight.w600,
-                      color: mm.t1,
+          child: LayoutBuilder(
+            builder: (context, c) {
+              final scaler = MediaQuery.textScalerOf(context);
+              final base = DefaultTextStyle.of(context).style;
+              double textWidth(TextStyle style, String text) {
+                final tp = TextPainter(
+                  text: TextSpan(text: text, style: base.merge(style)),
+                  textDirection: TextDirection.ltr,
+                  textScaler: scaler,
+                  maxLines: 1,
+                )..layout();
+                final w = tp.width;
+                tp.dispose();
+                return w;
+              }
+
+              final count = '${group.all.length}';
+              final countStyle = MeowFont.mono(size: MeowFont.caption2, color: mm.t3);
+              final badgeStyle = MeowFont.mono(size: MeowFont.caption2, weight: FontWeight.w600);
+              final badgeW = textWidth(badgeStyle, badge.label) + 16;   // TypeBadge 左右 padding 8+8
+              final nameW = c.maxWidth - 8 - badgeW - 6 - textWidth(countStyle, count);
+              final showCount = nameW >= 2 * scaler.scale(MeowFont.headline);
+              return Row(
+                children: [
+                  Flexible(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: onToggle,
+                      child: Text(
+                        group.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: MeowFont.headline,
+                          fontWeight: FontWeight.w600,
+                          color: mm.t1,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              TypeBadge(badge.label, color: badge.color),
-              const SizedBox(width: 6),
-              Text(
-                '${group.all.length}',
-                style: MeowFont.mono(size: MeowFont.caption2, color: mm.t3),
-              ),
-            ],
+                  const SizedBox(width: 8),
+                  // TypeBadge 的 Text 没设行数，这里兜底不折行
+                  DefaultTextStyle.merge(
+                    maxLines: 1,
+                    softWrap: false,
+                    child: TypeBadge(badge.label, color: badge.color),
+                  ),
+                  if (showCount) ...[
+                    const SizedBox(width: 6),
+                    Text(count, style: countStyle),
+                  ],
+                ],
+              );
+            },
           ),
         ),
         if (!dense && delay != null && delay != 0)
@@ -1098,7 +1174,7 @@ class _NodeSliverGrid extends ConsumerWidget {
         crossAxisCount: columns,
         mainAxisSpacing: _gridSpacing,
         crossAxisSpacing: _gridSpacing,
-        mainAxisExtent: _cellHeight,
+        mainAxisExtent: _nodeCellExtent(context),
       ),
       delegate: SliverChildBuilderDelegate((context, i) {
         final p = group.all[i];

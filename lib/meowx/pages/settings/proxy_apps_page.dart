@@ -186,8 +186,9 @@ class _ProxyAppsPageState extends ConsumerState<ProxyAppsPage> with WidgetsBindi
       return const Center(child: CircularProgressIndicator());
     }
     if (_denied) {
+      // 可滚：横屏 / 大字号时高度不够，「去授权」按钮也要能滚到
       return Center(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,

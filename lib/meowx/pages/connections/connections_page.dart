@@ -168,12 +168,18 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
         children: [
           Row(
             children: [
-              Text('${items.length} 条', style: TextStyle(fontSize: MeowFont.footnote, color: mm.t2)),
-              const SizedBox(width: 10),
-              Text('↑ ${fmtSize(totalUp)}', style: MeowFont.mono(size: MeowFont.footnote, color: mm.accent)),
-              const SizedBox(width: 8),
-              Text('↓ ${fmtSize(totalDown)}', style: MeowFont.mono(size: MeowFont.footnote, color: mm.accent)),
-              const Spacer(),
+              // 计数与总流量合成一段文字占满剩余宽度：大字号窄屏下省略号截断，「全部关闭」不被挤出屏幕
+              Expanded(
+                child: Text.rich(
+                  TextSpan(children: [
+                    TextSpan(text: '${items.length} 条', style: TextStyle(fontSize: MeowFont.footnote, color: mm.t2)),
+                    TextSpan(text: '  ↑ ${fmtSize(totalUp)}', style: MeowFont.mono(size: MeowFont.footnote, color: mm.accent)),
+                    TextSpan(text: '  ↓ ${fmtSize(totalDown)}', style: MeowFont.mono(size: MeowFont.footnote, color: mm.accent)),
+                  ]),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               if (_conns.isNotEmpty)
                 TextButton(
                   style: TextButton.styleFrom(foregroundColor: mm.slow, visualDensity: VisualDensity.compact),
@@ -410,19 +416,23 @@ class _ConnDetail extends StatelessWidget {
       child: Row(
         children: [
           Text(k, style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2)),
-          const Spacer(),
-          Flexible(child: Text(v, maxLines: 1, overflow: TextOverflow.ellipsis, style: MeowFont.mono(size: MeowFont.subheadline, color: mm.t1))),
+          const SizedBox(width: 12),
+          // 值拿键之外的全部宽度、右对齐（Spacer + Flexible 会平分，值最多只有一半宽）
+          Expanded(child: Text(v, textAlign: TextAlign.end, maxLines: 1, overflow: TextOverflow.ellipsis, style: MeowFont.mono(size: MeowFont.subheadline, color: mm.t1))),
         ],
       ),
     );
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Row(children: [
-          Expanded(child: card('出站链路', c.chains.reversed.join(' → '), color: mm.pur)),
-          const SizedBox(width: 12),
-          Expanded(child: card('命中规则', _ruleOf(c), mono: true)),
-        ]),
+        // 两卡值各最多 2 行，行数不同时拉到同高，免得上下边错开
+        IntrinsicHeight(
+          child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Expanded(child: card('出站链路', c.chains.reversed.join(' → '), color: mm.pur)),
+            const SizedBox(width: 12),
+            Expanded(child: card('命中规则', _ruleOf(c), mono: true)),
+          ]),
+        ),
         const SizedBox(height: 12),
         Row(children: [
           Expanded(child: card('上传', fmtSize(c.upload), mono: true)),
@@ -502,13 +512,24 @@ class _LogListState extends ConsumerState<_LogList> {
         final t = _time.firstMatch(l.dateTime)?.group(0) ?? l.dateTime;
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 3),
+          // 级别点嵌在时间文字里按行居中，整行与消息按基线对齐：任意字号下点都不偏上
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
             children: [
-              Text(t, style: MeowFont.mono(size: MeowFont.caption2, color: mm.t3)),
-              const SizedBox(width: 6),
-              Padding(padding: const EdgeInsets.only(top: 4), child: Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle))),
-              const SizedBox(width: 6),
+              Text.rich(TextSpan(
+                text: t,
+                style: MeowFont.mono(size: MeowFont.caption2, color: mm.t3),
+                children: [
+                  WidgetSpan(
+                    alignment: PlaceholderAlignment.middle,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+                    ),
+                  ),
+                ],
+              )),
               Expanded(
                 child: Text(l.payload, style: MeowFont.mono(size: MeowFont.caption, color: l.logLevel == LogLevel.error ? mm.accent : mm.t1)),
               ),

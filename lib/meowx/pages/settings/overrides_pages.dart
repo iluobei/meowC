@@ -54,9 +54,10 @@ class DnsHijackPage extends ConsumerWidget {
                             ref.read(meowSettingProvider.notifier).updateState((s) => s.copyWith(dnsHijack: {...s.dnsHijack}..remove(entries[i].key)));
                             _reloadIfRunning(ref);
                           },
+                          // 域名 / IP 上下两行：长域名不再和右侧 IP 抢宽度
                           child: ListTile(
-                            title: Text(entries[i].key, style: MeowFont.mono(size: MeowFont.subheadline, color: mm.t1)),
-                            trailing: Text(entries[i].value, style: MeowFont.mono(size: MeowFont.subheadline, color: mm.t2)),
+                            title: Text(entries[i].key, maxLines: 2, overflow: TextOverflow.ellipsis, style: MeowFont.mono(size: MeowFont.subheadline, color: mm.t1)),
+                            subtitle: Text(entries[i].value, style: MeowFont.mono(size: MeowFont.subheadline, color: mm.t2)),
                           ),
                         ),
                       ],
@@ -78,13 +79,15 @@ class DnsHijackPage extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
+          // 横屏弹键盘时高度不够：整体可滚，别把输入框压到按钮上
+          scrollable: true,
           title: const Text('添加 DNS 劫持'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(controller: domain, autofocus: true, decoration: InputDecoration(labelText: '域名', hintText: 'example.com', errorText: domainErr)),
+              TextField(controller: domain, autofocus: true, decoration: InputDecoration(labelText: '域名', hintText: 'example.com', errorText: domainErr, errorMaxLines: 3)),
               const SizedBox(height: 8),
-              TextField(controller: ip, decoration: InputDecoration(labelText: 'IPv4', hintText: '1.2.3.4', errorText: ipErr), keyboardType: TextInputType.number),
+              TextField(controller: ip, decoration: InputDecoration(labelText: 'IPv4', hintText: '1.2.3.4', errorText: ipErr, errorMaxLines: 3), keyboardType: TextInputType.number),
             ],
           ),
           actions: [
@@ -179,11 +182,13 @@ class BypassPage extends ConsumerWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setState) => AlertDialog(
+          scrollable: true,
           title: const Text('添加绕过'),
           content: TextField(
             controller: input,
             autofocus: true,
-            decoration: InputDecoration(labelText: '域名或 IP / CIDR', hintText: 'example.com、+.example.com、10.0.0.0/8', errorText: err),
+            // hint 默认只显示一行，三个示例会被截断
+            decoration: InputDecoration(labelText: '域名或 IP / CIDR', hintText: 'example.com、+.example.com、10.0.0.0/8', hintMaxLines: 2, errorText: err, errorMaxLines: 3),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),

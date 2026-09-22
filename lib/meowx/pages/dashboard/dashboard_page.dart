@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:bett_box/clash/clash.dart';
 import 'package:bett_box/common/common.dart';
@@ -27,10 +28,36 @@ import '../../theme/two_pane.dart';
 
 const _gap = 12.0;
 const _pad = 16.0;
-const _wideRowHeight = 104.0;
+
+/// 宽布局右列一行（指标卡）的高度。之前写死 104：只够 1.0 倍字号，App 字号跟随系统（最大 1.4 倍）时
+/// 右列 Column 没有弹性项，每张指标卡越出底边十几 px。按当前字样和文字缩放量出来，最小仍是 104。
+/// 标题继承页面默认样式（M3 bodyMedium，行高 1.43）；数值 / 说明套的是 DefaultTextStyle（替换、不合并），
+/// 不带 height，行高取决于字体自身的度量，所以只用它们自己的样式量。样例带中文：CJK 字体的行高比拉丁字母高。
+double _wideRowExtent(BuildContext context) {
+  final scaler = MediaQuery.textScalerOf(context);
+  final base = DefaultTextStyle.of(context).style;
+  double lineHeight(TextStyle style) {
+    final tp = TextPainter(
+      text: TextSpan(text: '上传 12.3', style: style),
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+      maxLines: 1,
+    )..layout();
+    final h = tp.height;
+    tp.dispose();
+    return h;
+  }
+
+  final title = math.max(lineHeight(base.merge(const TextStyle(fontSize: MeowFont.caption))), MeowFont.footnote + 2);   // 图标 15
+  final value = lineHeight(
+    const TextStyle(fontSize: MeowFont.title2, fontWeight: FontWeight.w600, fontFeatures: [FontFeature.tabularFigures()]),
+  );
+  final desc = lineHeight(const TextStyle(fontSize: MeowFont.caption2));
+  return math.max(104.0, (28 + title + 6 + value + 4 + desc + 2).ceilToDouble());   // 上下 padding 14、行距 6 / 4、余量 2
+}
 
 /// 首页：compact 顺序 标题 → 上传|下载 → 网速图 → 连接主卡 → 代理|直连 → 内存|DNS → 出口 IP；
-/// wide 左列「连接主卡 / 网速图」各 = 两行 + 12，右列四行各 104。
+/// wide 左列「连接主卡 / 网速图」各 = 两行 + 12，右列四行各一个行高（按字号量出，至少 104，见 [_wideRowExtent]）。
 class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
 
@@ -163,7 +190,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     const main = _ConnectionCard();
     // Windows：网速图的位置换成「TUN / 系统代理」接管卡（桌面端专有，两个开关沿用 Bettbox 的实现）
     // MEOWX_PREVIEW_DESKTOP：只用于在 Android 模拟器上预览这张桌面卡，正式包不带
-    final Widget speed = desktop ? const _TakeoverCard() : _SpeedCard(chartHeight: wide ? 132 : 84);
+    final Widget speed = desktop ? const _TakeoverCard() : _SpeedCard(expand: wide);
 
     if (!wide) {
       return ListView(
@@ -179,14 +206,16 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         ]),
       );
     }
-    Widget? wideRow(Widget? row) => row == null ? null : SizedBox(height: _wideRowHeight, child: row);
+    // 出口 IP 行也用同一个行高：它的底边要和左列网速图卡的底边对齐
+    final rowH = _wideRowExtent(context);
+    Widget? wideRow(Widget? row) => row == null ? null : SizedBox(height: rowH, child: row);
     final right = _spaced([
       wideRow(_pair(shows(HomeCard.upload) ? upload : null, shows(HomeCard.download) ? download : null, bounded: true)),
       wideRow(_pair(shows(HomeCard.proxied) ? proxyCard : null, shows(HomeCard.direct) ? directCard : null, bounded: true)),
       wideRow(_pair(shows(HomeCard.memory) ? memoryCard : null, shows(HomeCard.dns) ? dnsCard : null, bounded: true)),
       if (shows(HomeCard.ip)) wideRow(exitIp),
     ]);
-    const leftHeight = _wideRowHeight * 2 + _gap;
+    final leftHeight = rowH * 2 + _gap;
     return PageWidth(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(0, _pad, _pad, _pad),
@@ -352,7 +381,8 @@ class _MetricCard extends StatelessWidget {
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            child: value,
+            // 放不下时整体缩小，不截成「12.3 M…」（FittedBox 的 intrinsic 取子项，不影响手机端的 IntrinsicHeight）
+            child: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: value),
           ),
           const SizedBox(height: 4),
           DefaultTextStyle(
@@ -567,8 +597,10 @@ class _TakeoverCardState extends ConsumerState<_TakeoverCard> {
             children: [
               Icon(Icons.hub_rounded, size: MeowFont.footnote + 2, color: mm.accent),
               const SizedBox(width: 5),
-              Text('接管方式', style: TextStyle(fontSize: MeowFont.caption, color: mm.t2)),
-              const Spacer(),
+              // 窄窗口 + 大字号时标题让位给两个网速，省略而不是整行越界
+              Expanded(
+                child: Text('接管方式', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: MeowFont.caption, color: mm.t2)),
+              ),
               Text('↑ ${fmtRate(last?.up.value ?? 0)}', style: MeowFont.mono(size: MeowFont.caption2, weight: FontWeight.w600, color: mm.accent)),
               const SizedBox(width: 8),
               Text('↓ ${fmtRate(last?.down.value ?? 0)}', style: MeowFont.mono(size: MeowFont.caption2, weight: FontWeight.w600, color: mm.down)),
@@ -600,9 +632,11 @@ class _TakeoverCardState extends ConsumerState<_TakeoverCard> {
 }
 
 /// 网速图卡：60 点双线 + 「峰值 X」/「每秒采样 | 未连接」。
+/// [expand]：宽布局外层给了定高，图吃掉标题与底栏以外的全部高度（字号变大时自动让出空间）；
+/// 手机端这张卡是 ListView 的直接子项、高度无界，不能用 Expanded，图固定 84。
 class _SpeedCard extends ConsumerWidget {
-  const _SpeedCard({required this.chartHeight});
-  final double chartHeight;
+  const _SpeedCard({this.expand = false});
+  final bool expand;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -621,24 +655,32 @@ class _SpeedCard extends ConsumerWidget {
         Text(text, style: TextStyle(fontSize: MeowFont.caption2, color: mm.t2)),
       ],
     );
+    final chart = Sparkline(up: up, down: down, height: expand ? double.infinity : 84);
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
         children: [
           Row(
             children: [
               Icon(Icons.monitor_heart_outlined, size: MeowFont.footnote + 2, color: mm.accent),
               const SizedBox(width: 5),
-              Text('网速 · 近 60 秒', style: TextStyle(fontSize: MeowFont.caption, color: mm.t2)),
-              const Spacer(),
+              // 窄屏 + 大字号时标题让位给图例，省略而不是整行越界
+              Expanded(
+                child: Text(
+                  '网速 · 近 60 秒',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: MeowFont.caption, color: mm.t2),
+                ),
+              ),
               legend(S.upload, mm.accent),
               const SizedBox(width: 12),
               legend(S.download, mm.down),
             ],
           ),
           const SizedBox(height: 10),
-          Sparkline(up: up, down: down, height: chartHeight),
+          if (expand) Expanded(child: chart) else chart,
           const SizedBox(height: 8),
           Row(
             children: [
@@ -810,47 +852,57 @@ class _SubscriptionBar extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.copy_all_rounded, size: 14, color: mm.t2),
-              const SizedBox(width: 6),
-              Expanded(
-                child: PopupMenuButton<String>(
-                  tooltip: '',
-                  padding: EdgeInsets.zero,
-                  // 改 currentProfileId 即切换（ClashManager 监听后自动重载）。
-                  // 之前调的 setProfileAndAutoApply 只是「更新并重载当前档」，选了别的订阅不会切过去。
-                  onSelected: (id) {
-                    if (profiles.getProfile(id) != null && ref.read(currentProfileIdProvider) != id) {
-                      ref.read(currentProfileIdProvider.notifier).value = id;
-                    }
-                  },
-                  itemBuilder: (_) => [
-                    for (final p in profiles)
-                      PopupMenuItem(value: p.id, child: Text(p.label ?? p.id, maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  ],
-                  child: Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          profile.label ?? profile.id,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: MeowFont.subheadline, fontWeight: FontWeight.w500, color: mm.t1),
-                        ),
-                      ),
-                      Icon(Icons.expand_more_rounded, size: 16, color: mm.t3),
+          LayoutBuilder(
+            builder: (context, c) => Row(
+              children: [
+                Icon(Icons.copy_all_rounded, size: 14, color: mm.t2),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: PopupMenuButton<String>(
+                    tooltip: '',
+                    padding: EdgeInsets.zero,
+                    // 改 currentProfileId 即切换（ClashManager 监听后自动重载）。
+                    // 之前调的 setProfileAndAutoApply 只是「更新并重载当前档」，选了别的订阅不会切过去。
+                    onSelected: (id) {
+                      if (profiles.getProfile(id) != null && ref.read(currentProfileIdProvider) != id) {
+                        ref.read(currentProfileIdProvider.notifier).value = id;
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      for (final p in profiles)
+                        PopupMenuItem(value: p.id, child: Text(p.label ?? p.id, maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ],
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            profile.label ?? profile.id,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: MeowFont.subheadline, fontWeight: FontWeight.w500, color: mm.t1),
+                          ),
+                        ),
+                        Icon(Icons.expand_more_rounded, size: 16, color: mm.t3),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              if (hasUsage)
-                Text(
-                  total > 0 ? '${fmtSize(used)} / ${fmtSize(total)}' : '${fmtSize(used)} / ${S.unlimited}',
-                  style: MeowFont.mono(size: MeowFont.caption, color: mm.t2),
-                ),
-            ],
+                const SizedBox(width: 8),
+                // 用量最多占一半宽、放不下就缩小：TB 级套餐 + 窄屏 + 大字号时不再把订阅名挤没 / 整行越界
+                if (hasUsage)
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: c.maxWidth * 0.5),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        total > 0 ? '${fmtSize(used)} / ${fmtSize(total)}' : '${fmtSize(used)} / ${S.unlimited}',
+                        style: MeowFont.mono(size: MeowFont.caption, color: mm.t2),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
           if (hasUsage) ...[
             const SizedBox(height: 8),
@@ -874,6 +926,7 @@ class _EmptySubscriptionBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mm = context.mm;
+    final wide = ref.watch(isTwoPaneProvider);
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () {
@@ -887,7 +940,15 @@ class _EmptySubscriptionBar extends ConsumerWidget {
           children: [
             Icon(Icons.add_circle_outline_rounded, size: 16, color: mm.accent),
             const SizedBox(width: 6),
-            Text('${S.noSubscription} · ${S.goImport}', style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2)),
+            // 手机端连接主卡在 ListView 里能撑高，允许折两行；宽布局主卡定高，只给一行
+            Expanded(
+              child: Text(
+                '${S.noSubscription} · ${S.goImport}',
+                maxLines: wide ? 1 : 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2),
+              ),
+            ),
           ],
         ),
       ),
@@ -981,26 +1042,36 @@ class _ExitIpCardState extends ConsumerState<_ExitIpCard> {
     final mm = context.mm;
     final running = ref.watch(isRunningProvider);
     final st = ref.watch(exitIpProvider);
-    Widget col(String title, IpInfo? info, {required bool loading, required String placeholder}) => Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: MeowFont.caption2, color: mm.t2)),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            if (info != null) ...[Text(flag(info.countryCode), style: const TextStyle(fontSize: 14)), const SizedBox(width: 5)],
-            Expanded(
-              child: Text(
-                info?.ip ?? (loading ? S.querying : placeholder),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: MeowFont.mono(size: MeowFont.footnote, color: info == null ? mm.t3 : mm.t1),
+    final wide = ref.watch(isTwoPaneProvider);
+    Widget col(String title, IpInfo? info, {required bool loading, required String placeholder}) {
+      final text = info?.ip ?? (loading ? S.querying : placeholder);
+      final style = MeowFont.mono(size: MeowFont.footnote, color: info == null ? mm.t3 : mm.t1);
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: MeowFont.caption2, color: mm.t2)),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              if (info != null) ...[Text(flag(info.countryCode), style: const TextStyle(fontSize: 14)), const SizedBox(width: 5)],
+              Expanded(
+                // IP 要完整显示，不能截成「2001:db8:…」。IPv6 在手机端折两行（这张卡在 ListView 里能撑高）；
+                // 其余（IPv4、占位文案、宽布局定高行里的 IPv6）一行放不下就整体缩小。
+                // FittedBox 里的 Text 保留 maxLines: 1：外层 IntrinsicHeight 量的是子项在列宽下的高度，不限行会按折行算高
+                child: text.contains(':') && !wide
+                    ? Text(text, maxLines: 2, overflow: TextOverflow.ellipsis, style: style)
+                    : FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(text, maxLines: 1, style: style),
+                      ),
               ),
-            ),
-          ],
-        ),
-      ],
-    );
+            ],
+          ),
+        ],
+      );
+    }
+
     final busy = st.loadingDomestic || st.loadingGlobal;
     return GlassCard(
       child: Column(

@@ -221,6 +221,8 @@ class _AccountCard extends ConsumerWidget {
           ),
           if (!loggedIn) ...[
             const SizedBox(height: 12),
+            // 双按钮各占半宽：1.4 倍字时「内边距 32 + 图标 18 + 间距 6.4 + 四字 78.8」≈ 135，
+            // 屏宽 < ~338dp 就折成「扫码登/录」；label 在按钮内部已是 Flexible，FittedBox 只缩不放
             Row(
               children: [
                 if (system.isAndroid) ...[
@@ -228,7 +230,10 @@ class _AccountCard extends ConsumerWidget {
                     child: FilledButton.icon(
                       onPressed: () => _scan(context, ref),
                       icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
-                      label: const Text('扫码登录'),
+                      label: const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text('扫码登录', maxLines: 1, softWrap: false),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -239,7 +244,10 @@ class _AccountCard extends ConsumerWidget {
                           onPressed: () =>
                               showLoginSheet(context, ref, onError: onError),
                           icon: const Icon(Icons.person_rounded, size: 18),
-                          label: const Text('账号登录'),
+                          label: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('账号登录', maxLines: 1, softWrap: false),
+                          ),
                         )
                       : FilledButton.icon(
                           onPressed: () =>
@@ -278,6 +286,7 @@ Future<void> showLoginSheet(
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
+    useSafeArea: true,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setState) {
         final mm = ctx.mm;
@@ -309,63 +318,68 @@ Future<void> showLoginSheet(
           }
         }
 
+        // 键盘高度留在外层：横屏 + 键盘时剩余高度放不下整张表单，内层滚动才能滑到密码框和登录钮
         return Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            16,
-            20,
-            20 + MediaQuery.viewInsetsOf(ctx).bottom,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                twoFactorToken == null ? '登录妙妙屋X' : '二步验证',
-                style: TextStyle(
-                  fontSize: MeowFont.title3,
-                  fontWeight: FontWeight.w600,
-                  color: mm.t1,
-                ),
-              ),
-              const SizedBox(height: 12),
-              if (twoFactorToken == null) ...[
-                TextField(
-                  controller: host,
-                  decoration: const InputDecoration(
-                    labelText: '主控地址',
-                    hintText: 'https://panel.example.com',
+          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+          child: SingleChildScrollView(
+            // edge-to-edge 下导航栏透明压在表单底部；键盘弹出时 paddingOf.bottom 自动归 0，不会与键盘高度重复
+            padding: EdgeInsets.fromLTRB(
+              20,
+              16,
+              20,
+              20 + MediaQuery.paddingOf(ctx).bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  twoFactorToken == null ? '登录妙妙屋X' : '二步验证',
+                  style: TextStyle(
+                    fontSize: MeowFont.title3,
+                    fontWeight: FontWeight.w600,
+                    color: mm.t1,
                   ),
-                  keyboardType: TextInputType.url,
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: user,
-                  decoration: const InputDecoration(labelText: '用户名'),
+                const SizedBox(height: 12),
+                if (twoFactorToken == null) ...[
+                  TextField(
+                    controller: host,
+                    decoration: const InputDecoration(
+                      labelText: '主控地址',
+                      hintText: 'https://panel.example.com',
+                    ),
+                    keyboardType: TextInputType.url,
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: user,
+                    decoration: const InputDecoration(labelText: '用户名'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: pass,
+                    decoration: const InputDecoration(labelText: '密码'),
+                    obscureText: true,
+                    onSubmitted: (_) => submit(),
+                  ),
+                ] else
+                  TextField(
+                    controller: code,
+                    decoration: const InputDecoration(labelText: '验证码 / 恢复码'),
+                    autofocus: true,
+                    onSubmitted: (_) => submit(),
+                  ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: busy ? null : submit,
+                    child: Text(busy ? '登录中…' : '登录'),
+                  ),
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: pass,
-                  decoration: const InputDecoration(labelText: '密码'),
-                  obscureText: true,
-                  onSubmitted: (_) => submit(),
-                ),
-              ] else
-                TextField(
-                  controller: code,
-                  decoration: const InputDecoration(labelText: '验证码 / 恢复码'),
-                  autofocus: true,
-                  onSubmitted: (_) => submit(),
-                ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: busy ? null : submit,
-                  child: Text(busy ? '登录中…' : '登录'),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -783,19 +797,30 @@ class _ImportCardState extends ConsumerState<_ImportCard> {
             onSubmitted: (_) => _import(),
           ),
           const SizedBox(height: 10),
+          // 同账户卡双按钮：1.4 倍字时「内边距 38.4 + 四字 78.8」≈ 117，屏宽 < ~302dp（小窗 / 分屏）会折行
           Row(
             children: [
               Expanded(
                 child: FilledButton(
                   onPressed: _busy ? null : _import,
-                  child: Text(_busy ? '导入中…' : '导入订阅'),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      _busy ? '导入中…' : '导入订阅',
+                      maxLines: 1,
+                      softWrap: false,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: FilledButton.tonal(
                   onPressed: hasCurrent ? _view : null,
-                  child: const Text('查看配置'),
+                  child: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('查看配置', maxLines: 1, softWrap: false),
+                  ),
                 ),
               ),
             ],

@@ -158,6 +158,8 @@ class MedalDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     final mm = context.mm;
     final gold = medal.medal == 'gold';
+    // 运营商名列宽 = 2 个汉字，跟着文字缩放走，三行一样宽、后面的列对齐
+    final carrierWidth = MediaQuery.textScalerOf(context).scale(MeowFont.caption) * 2;
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       child: Column(
@@ -182,7 +184,8 @@ class MedalDetail extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 3),
                 child: Row(
                   children: [
-                    SizedBox(width: 34, child: Text(carrierCN(r.carrier), style: TextStyle(fontSize: MeowFont.caption, fontWeight: FontWeight.w500, color: mm.t1))),
+                    SizedBox(width: carrierWidth, child: Text(carrierCN(r.carrier), maxLines: 1, softWrap: false, overflow: TextOverflow.clip, style: TextStyle(fontSize: MeowFont.caption, fontWeight: FontWeight.w500, color: mm.t1))),
+                    const SizedBox(width: 8),
                     Expanded(child: Text('${r.routeType}${r.region != null ? '（${r.region}）' : ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: MeowFont.mono(size: MeowFont.caption2, color: mm.t2))),
                     if (r.gold) Icon(Icons.star_rounded, size: 13, color: mm.orange),
                   ],

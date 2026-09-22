@@ -168,7 +168,7 @@ class SettingsPage extends ConsumerWidget {
               title: '端口',
               trailing: Text('${clash.mixedPort}', style: MeowFont.mono(size: MeowFont.subheadline, color: mm.t2)),
               onTap: () async {
-                final input = await _prompt(context, '本地代理端口（1024–65535）', '${clash.mixedPort}', keyboard: TextInputType.number);
+                final input = await _prompt(context, '本地代理端口', '${clash.mixedPort}', keyboard: TextInputType.number, helper: '范围 1024–65535');
                 final port = int.tryParse(input ?? '');
                 if (port == null) return;
                 if (port < 1024 || port > 65535) {
@@ -189,7 +189,13 @@ class SettingsPage extends ConsumerWidget {
               icon: Icons.person_rounded,
               color: mm.orange,
               title: '用户名',
-              trailing: Text(meow.localProxy.username.isEmpty ? '未设置' : meow.localProxy.username, style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2)),
+              trailing: Text(
+                meow.localProxy.username.isEmpty ? '未设置' : meow.localProxy.username,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+                style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2),
+              ),
               onTap: () async {
                 final v = await _prompt(context, '用户名（留空 = 不认证）', meow.localProxy.username);
                 if (v == null) return;
@@ -309,13 +315,22 @@ class SettingsPage extends ConsumerWidget {
     ],
   );
 
-  static Future<String?> _prompt(BuildContext context, String title, String initial, {TextInputType? keyboard, bool obscure = false}) {
+  static Future<String?> _prompt(BuildContext context, String title, String initial, {TextInputType? keyboard, bool obscure = false, String? helper}) {
     final c = TextEditingController(text: initial);
     return showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
+        // 横屏弹键盘时高度不够：整体可滚，别把输入框压到按钮上
+        scrollable: true,
         title: Text(title),
-        content: TextField(controller: c, autofocus: true, keyboardType: keyboard, obscureText: obscure, onSubmitted: (v) => Navigator.of(ctx).pop(v)),
+        content: TextField(
+          controller: c,
+          autofocus: true,
+          keyboardType: keyboard,
+          obscureText: obscure,
+          decoration: InputDecoration(helperText: helper),
+          onSubmitted: (v) => Navigator.of(ctx).pop(v),
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('取消')),
           FilledButton(onPressed: () => Navigator.of(ctx).pop(c.text), child: const Text('确定')),
@@ -387,26 +402,33 @@ class _Row extends StatelessWidget {
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          children: [
-            Container(
-              width: 29,
-              height: 29,
-              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(7)),
-              child: Icon(icon, size: 17, color: Colors.white),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: TextStyle(fontSize: MeowFont.body, color: mm.t1)),
-                  if (subtitle != null) Text(subtitle!, style: TextStyle(fontSize: MeowFont.caption, color: mm.t3)),
-                ],
+        child: LayoutBuilder(
+          builder: (_, constraints) => Row(
+            children: [
+              Container(
+                width: 29,
+                height: 29,
+                decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(7)),
+                child: Icon(icon, size: 17, color: Colors.white),
               ),
-            ),
-            ?trailing,
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: TextStyle(fontSize: MeowFont.body, color: mm.t1)),
+                    if (subtitle != null) Text(subtitle!, style: TextStyle(fontSize: MeowFont.caption, color: mm.t3)),
+                  ],
+                ),
+              ),
+              // 右侧最多占行宽 45%：长选项（如测速地址）在里面省略，不把标题挤成两行、放大字号也不溢出
+              if (trailing != null)
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.45),
+                  child: trailing,
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -465,7 +487,15 @@ class _PickerRow<T> extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(label(value), style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2)),
+            Flexible(
+              child: Text(
+                label(value),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
+                style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2),
+              ),
+            ),
             const SizedBox(width: 2),
             Icon(Icons.unfold_more_rounded, size: 18, color: mm.t3),
           ],

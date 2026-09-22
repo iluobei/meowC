@@ -79,28 +79,38 @@ class _UnlockDetailState extends State<UnlockDetail> {
           Container(
             padding: const EdgeInsets.all(2),
             decoration: BoxDecoration(color: mm.t1.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(9)),
-            child: Row(
-              children: [
-                for (final c in UnlockCategory.values)
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => UnlockDetail.lastTab = _tab = c),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 5),
-                        decoration: BoxDecoration(
-                          color: _tab == c ? mm.elev : Colors.transparent,
-                          borderRadius: BorderRadius.circular(7),
-                          boxShadow: _tab == c ? [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 3)] : null,
-                        ),
-                        child: Text(
-                          '${c.label} ${_groups[c]!.where((e) => e.unlocked).length}/${_groups[c]!.length}',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: MeowFont.caption2, fontWeight: FontWeight.w600, color: _tab == c ? mm.t1 : mm.t2),
+            // 三段拉成等高：被 FittedBox 缩小的那段，选中底也不比别的段矮（只有 3 段，IntrinsicHeight 开销可忽略）
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final c in UnlockCategory.values)
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => UnlockDetail.lastTab = _tab = c),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 5),
+                          decoration: BoxDecoration(
+                            color: _tab == c ? mm.elev : Colors.transparent,
+                            borderRadius: BorderRadius.circular(7),
+                            boxShadow: _tab == c ? [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 3)] : null,
+                          ),
+                          // 大字时整段缩小而不是折成两行，分段高度不跳
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              '${c.label} ${_groups[c]!.where((e) => e.unlocked).length}/${_groups[c]!.length}',
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(fontSize: MeowFont.caption2, fontWeight: FontWeight.w600, color: _tab == c ? mm.t1 : mm.t2),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 6),
