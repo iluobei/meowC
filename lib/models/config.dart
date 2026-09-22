@@ -482,6 +482,20 @@ abstract class Config with _$Config {
       }
     } catch (_) {}
 
+    // MeowX：默认 TUN 栈 mixed → mips（2026-09-22）。栈只能在「高级」里改，老用户存的基本都是旧默认 mixed，
+    // 一次性迁过去；迁完在 meow 里记一笔，之后用户手选 mixed 就保留
+    try {
+      final meow = json['meow'] is Map ? Map<String, Object?>.from(json['meow'] as Map) : <String, Object?>{};
+      if (meow['tunStackMigrated'] != true) {
+        final patch = json['patchClashConfig'];
+        final tun = patch is Map ? patch['tun'] : null;
+        if (tun is Map && tun['stack'] == TunStack.mixed.name) {
+          tun['stack'] = TunStack.mips.name;
+        }
+        json['meow'] = {...meow, 'tunStackMigrated': true};
+      }
+    } catch (_) {}
+
     return Config.fromJson(json);
   }
 }

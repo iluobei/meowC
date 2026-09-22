@@ -157,6 +157,9 @@ abstract class MeowSettings with _$MeowSettings {
     @Default([]) List<String> bypassCidrs,
     @Default(MeowLocalProxy()) MeowLocalProxy localProxy,
     @Default(MeowAccount()) MeowAccount account,
+
+    /// 已做过「TUN 栈 mixed → mips」的一次性迁移（之后用户在高级里手选 mixed 不会被改回去）
+    @Default(false) bool tunStackMigrated,
   }) = _MeowSettings;
 
   factory MeowSettings.fromJson(Map<String, Object?> json) =>
