@@ -1029,7 +1029,11 @@ class _NodeSliverGrid extends ConsumerWidget {
         ref.watch(getSelectedProxyNameProvider(group.name)) ?? '';
     final metas = ref.watch(proxyMetaProvider);
     final mode = ref.watch(meowSettingProvider.select((s) => s.latencyMode));
-    final isSelector = group.type == GroupType.Selector;
+    // select 组点了就切；url-test / fallback 组点了是「固定」到该节点（mihomo 的 SelectAble.Set），
+    // 再点一次已固定的节点 = 取消固定、回到自动选择（ForceSet("")）。对齐 Bettbox 原版的语义。
+    final computed = group.type.isComputedSelected;
+    final selectable = computed || group.type == GroupType.Selector;
+    final pinned = computed ? (ref.watch(getProxyNameProvider(group.name)) ?? '') : '';
     return SliverGrid(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: columns,
@@ -1045,12 +1049,14 @@ class _NodeSliverGrid extends ConsumerWidget {
           group: group,
           meta: metas[p.name],
           selected: p.name == selectedName,
+          pinned: computed && p.name == pinned,
           mode: mode,
-          onTap: isSelector
+          onTap: selectable
               ? () {
+                  final next = computed && p.name == pinned ? '' : p.name;
                   final c = globalState.appController;
-                  c.updateCurrentSelectedMap(group.name, p.name);
-                  c.changeProxyDebounce(group.name, p.name);
+                  c.updateCurrentSelectedMap(group.name, next);
+                  c.changeProxyDebounce(group.name, next);
                 }
               : null,
         );
@@ -1067,6 +1073,7 @@ class _NodeCell extends ConsumerWidget {
     required this.group,
     required this.meta,
     required this.selected,
+    this.pinned = false,
     required this.mode,
     required this.onTap,
   });
@@ -1075,6 +1082,9 @@ class _NodeCell extends ConsumerWidget {
   final Group group;
   final ProxyMeta? meta;
   final bool selected;
+
+  /// url-test / fallback 组里被手动固定的节点（名字旁画一把锁）。
+  final bool pinned;
   final LatencyMode mode;
   final VoidCallback? onTap;
 
@@ -1149,6 +1159,13 @@ class _NodeCell extends ConsumerWidget {
                   ),
                 ),
                 if (nested) Icon(Icons.layers_rounded, size: 14, color: mm.t3),
+                if (pinned) ...[
+                  const SizedBox(width: 2),
+                  Tooltip(
+                    message: '已固定，再点一次恢复自动选择',
+                    child: Icon(Icons.push_pin_rounded, size: 13, color: mm.accent),
+                  ),
+                ],
                 if (medal != null) ...[
                   const SizedBox(width: 2),
                   MedalBadge(medal, size: 14),

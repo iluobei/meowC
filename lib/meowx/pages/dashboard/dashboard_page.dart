@@ -430,13 +430,13 @@ class _TakeoverCard extends ConsumerStatefulWidget {
 }
 
 class _TakeoverCardState extends ConsumerState<_TakeoverCard> {
-  /// Windows 的 TUN 要靠 MeowX 服务（helper）以 SYSTEM 拉起核心；已是管理员身份运行则不需要。
+  /// Windows 的 TUN 要靠 MeowX 服务（helper）以 SYSTEM 拉起核心。
+  /// （Bettbox 的 checkIsAdmin 在 Windows 上也只是「服务在跑且 ping 通」，不看进程是否提权，所以这里只认服务状态。）
   /// null = 还没查 / 非 Windows（不检测）。
   WindowsHelperServiceStatus? _service;
-  bool _admin = false;
   bool _installing = false;
 
-  bool get _tunReady => windows == null || _admin || _service == WindowsHelperServiceStatus.running;
+  bool get _tunReady => windows == null || _service == WindowsHelperServiceStatus.running;
 
   @override
   void initState() {
@@ -448,14 +448,8 @@ class _TakeoverCardState extends ConsumerState<_TakeoverCard> {
     final w = windows;
     if (w == null) return;
     try {
-      final admin = await system.checkIsAdmin();
       final status = await w.checkService();
-      if (mounted) {
-        setState(() {
-          _admin = admin;
-          _service = status;
-        });
-      }
+      if (mounted) setState(() => _service = status);
     } catch (e) {
       commonPrint.log('check helper service failed: $e');
     }
@@ -494,6 +488,13 @@ class _TakeoverCardState extends ConsumerState<_TakeoverCard> {
         );
         if (go != true || !mounted) return;
         if (!await _installService() || !mounted) return;
+        // 服务刚装好，说明现在跑着的核心是启动时服务不可用、以当前用户身份回落拉起的——它建不了网卡。
+        // 必须重启核心，让 helper 以 SYSTEM 重新拉起；否则后面的 authorizeCore 看到服务已就绪返回 none、不重启，TUN 会下发给这个无权限的核心。
+        ref.read(patchClashConfigProvider.notifier).updateState((s) => s.copyWith.tun(enable: true));
+        try {
+          await globalState.appController.restartCore();
+        } catch (_) {}   // 失败已由 restartCore 自己上报
+        return;
       }
     }
     ref.read(patchClashConfigProvider.notifier).updateState((s) => s.copyWith.tun(enable: on));
@@ -518,7 +519,7 @@ class _TakeoverCardState extends ConsumerState<_TakeoverCard> {
     } else if (tun && running && !realTun) {
       tunDesc = '未生效：没有拿到管理员权限';
     } else {
-      tunDesc = '接管全部应用的流量${_admin ? ' · 管理员身份' : (_service == WindowsHelperServiceStatus.running ? ' · 服务已就绪' : '')}';
+      tunDesc = '接管全部应用的流量${_service == WindowsHelperServiceStatus.running ? ' · 服务已就绪' : ''}';
     }
 
     Widget tile({
