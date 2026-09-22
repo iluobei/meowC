@@ -11,9 +11,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../theme/tokens.dart';
 
-/// 代理应用（Android 分应用代理）：开启后只有勾选的应用走 VPN，其余应用直连。
-/// 数据沿用 Bettbox 的 `VpnProps.accessControl`（白名单模式 acceptSelected），VPN 服务按它调 addAllowedApplication；
-/// 运行中改动由 Bettbox 的 VpnManager 弹「重启生效」提示。更细的选项（黑名单、排序、手动包名）在「高级 → 访问控制」。
+/// 代理应用（Android 分应用代理）：支持仅代理勾选应用的白名单，以及勾选应用直连的黑名单。
+/// 两份名单沿用 Bettbox 的 `VpnProps.accessControl`，切换模式或开关时保留各自的选择。
+/// 运行中改动由 Bettbox 的 VpnManager 弹「重启生效」提示。排序、手动包名等选项在「高级 → 访问控制」。
 class ProxyAppsPage extends ConsumerStatefulWidget {
   const ProxyAppsPage({super.key});
 
@@ -28,7 +28,7 @@ class _ProxyAppsPageState extends ConsumerState<ProxyAppsPage> with WidgetsBindi
   bool _showSystem = false;
 
   /// 进页面时已勾选的应用：排在最前。勾选过程中不重排，免得刚点的那一行跳走。
-  late Set<String> _pinned = ref.read(vpnSettingProvider).accessControl.acceptList.toSet();
+  late Set<String> _pinned = ref.read(vpnSettingProvider).accessControl.currentList.toSet();
 
   @override
   void initState() {
@@ -58,7 +58,7 @@ class _ProxyAppsPageState extends ConsumerState<ProxyAppsPage> with WidgetsBindi
       if (mounted) {
         setState(() {
           _denied = list.isEmpty;
-          _pinned = ref.read(vpnSettingProvider).accessControl.acceptList.toSet();
+          _pinned = ref.read(vpnSettingProvider).accessControl.currentList.toSet();
         });
       }
     } finally {
@@ -68,20 +68,32 @@ class _ProxyAppsPageState extends ConsumerState<ProxyAppsPage> with WidgetsBindi
 
   void _setEnabled(bool on) {
     ref.read(vpnSettingProvider.notifier).updateState(
-      (s) => s.copyWith.accessControl(enable: on, mode: AccessControlMode.acceptSelected),
+      (s) => s.copyWith.accessControl(enable: on),
     );
     if (on) unawaited(_load());
   }
 
+  void _setMode(AccessControlMode mode) {
+    ref.read(vpnSettingProvider.notifier).updateState(
+      (s) => s.copyWith.accessControl(mode: mode),
+    );
+    setState(() {
+      _pinned = ref.read(vpnSettingProvider).accessControl.currentList.toSet();
+    });
+  }
+
   void _toggle(String packageName, bool on) {
     ref.read(vpnSettingProvider.notifier).updateState((s) {
-      final list = [...s.accessControl.acceptList];
+      final list = [...s.accessControl.currentList];
       if (on) {
         if (!list.contains(packageName)) list.add(packageName);
       } else {
         list.remove(packageName);
       }
-      return s.copyWith.accessControl(acceptList: list);
+      return switch (s.accessControl.mode) {
+        AccessControlMode.acceptSelected => s.copyWith.accessControl(acceptList: list),
+        AccessControlMode.rejectSelected => s.copyWith.accessControl(rejectList: list),
+      };
     });
   }
 
@@ -90,7 +102,8 @@ class _ProxyAppsPageState extends ConsumerState<ProxyAppsPage> with WidgetsBindi
     final mm = context.mm;
     final access = ref.watch(vpnSettingProvider.select((s) => s.accessControl));
     final packages = ref.watch(packagesProvider);
-    final selected = access.acceptList.toSet();
+    final selected = access.currentList.toSet();
+    final isWhitelist = access.mode == AccessControlMode.acceptSelected;
     final q = _search.text.trim().toLowerCase();
 
     // 没有联网权限的应用代理不代理都一样，不列；系统应用默认收起（已勾选的始终显示）
@@ -123,9 +136,13 @@ class _ProxyAppsPageState extends ConsumerState<ProxyAppsPage> with WidgetsBindi
               borderRadius: BorderRadius.circular(16),
               clipBehavior: Clip.antiAlias,
               child: SwitchListTile.adaptive(
-                title: Text('只代理勾选的应用', style: TextStyle(fontSize: MeowFont.body, color: mm.t1)),
+                title: Text('启用应用分流', style: TextStyle(fontSize: MeowFont.body, color: mm.t1)),
                 subtitle: Text(
-                  access.enable ? '已选 ${selected.length} 个应用，其余应用直连' : '关闭时全部应用都走代理',
+                  !access.enable
+                      ? '关闭时全部应用都走代理'
+                      : isWhitelist
+                          ? '白名单：仅代理已选的 ${selected.length} 个应用，其余应用直连'
+                          : '黑名单：已选的 ${selected.length} 个应用直连，其余应用走代理',
                   style: TextStyle(fontSize: MeowFont.caption, color: mm.t3),
                 ),
                 value: access.enable,
@@ -134,6 +151,33 @@ class _ProxyAppsPageState extends ConsumerState<ProxyAppsPage> with WidgetsBindi
             ),
           ),
           if (access.enable) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<AccessControlMode>(
+                  segments: const [
+                    ButtonSegment(value: AccessControlMode.acceptSelected, label: Text('白名单')),
+                    ButtonSegment(value: AccessControlMode.rejectSelected, label: Text('黑名单')),
+                  ],
+                  selected: {access.mode},
+                  onSelectionChanged: (modes) => _setMode(modes.single),
+                  style: SegmentedButton.styleFrom(
+                    foregroundColor: mm.t2,
+                    selectedForegroundColor: mm.accent,
+                    selectedBackgroundColor: mm.accent.withValues(alpha: 0.10),
+                    textStyle: const TextStyle(fontSize: MeowFont.subheadline),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Text(
+                '修改模式或名单后，重新连接生效。',
+                style: TextStyle(fontSize: MeowFont.caption, color: mm.t3),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Row(
@@ -169,7 +213,7 @@ class _ProxyAppsPageState extends ConsumerState<ProxyAppsPage> with WidgetsBindi
                 child: Padding(
                   padding: const EdgeInsets.all(32),
                   child: Text(
-                    '开启后在这里勾选需要走代理的应用。\n修改名单后需要重新连接才会生效。',
+                    '开启后可选择白名单或黑名单，并勾选对应应用。\n修改模式或名单后需要重新连接才会生效。',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t3),
                   ),
