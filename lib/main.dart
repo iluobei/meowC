@@ -5,6 +5,7 @@ import 'dart:isolate';
 import 'dart:ui';
 
 import 'package:bett_box/plugins/app.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart' as lg;
 import 'package:bett_box/plugins/clipboard_ext.dart';
 import 'package:bett_box/plugins/tile.dart';
 import 'package:bett_box/plugins/vpn.dart';
@@ -100,7 +101,14 @@ Future<void> _runApp() async {
     clipboardExt.init();
   }
   HttpOverrides.global = BettboxHttpOverrides();
-  runApp(ProviderScope(child: const Application()));
+  // MeowX：液态玻璃底栏的 shader 预热（不预热首帧会先闪一下磨砂）；wrap 让玻璃跟随 App 的深浅色而不是系统
+  await lg.LiquidGlassWidgets.initialize(enablePerformanceMonitor: false);
+  runApp(
+    lg.LiquidGlassWidgets.wrap(
+      brightnessResolver: Theme.maybeBrightnessOf,
+      child: ProviderScope(child: const Application()),
+    ),
+  );
 }
 
 @pragma('vm:entry-point')

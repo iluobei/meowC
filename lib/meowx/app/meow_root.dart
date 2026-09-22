@@ -7,7 +7,9 @@ import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart' as lg;
 
 import '../config/direct_profile.dart';
 import '../pages/connections/connections_page.dart';
@@ -20,7 +22,6 @@ import '../panel/client.dart';
 import '../panel/realtime.dart';
 import '../state/meow_settings.dart';
 import '../state/status.dart';
-import '../theme/glass_tab_bar.dart';
 import '../theme/icon_rail.dart';
 import '../theme/tokens.dart';
 import 'meow_tab.dart';
@@ -221,15 +222,27 @@ class _MeowRootState extends ConsumerState<MeowRoot> {
     return MeowBackScope(
       child: Scaffold(
         backgroundColor: mm.bg,
-        // 手机：底栏是悬浮的玻璃胶囊，内容从它下面滚过去（extendBody），各页自己把 MediaQuery.padding.bottom 加进底部留白
+        // 手机：底栏是悬浮的液态玻璃胶囊，内容从它下面滚过去（extendBody），各页自己把 MediaQuery.padding.bottom 加进底部留白
         extendBody: !wide,
         body: SafeArea(bottom: wide, child: body),   // 状态栏下留白
+        // liquid_glass_widgets：Impeller（Android 10+）上高亮胶囊是真折射 + 高光，按住放大、拖动带果冻形变；
+        // Skia（Android 8–9、Windows 3.44）自动降级为模糊 + 双高光，仍可拖动。底轨用 standard 省 GPU。
         bottomNavigationBar: wide
             ? null
-            : GlassTabBar(
-                selected: tab.index,
-                onSelect: (i) => _select(MeowTab.values[i]),
-                items: [for (final t in MeowTab.values) GlassTabItem(icon: t.icon, label: t.label)],
+            : lg.GlassTabBar.bottom(
+                selectedIndex: tab.index,
+                onTabSelected: (i) {
+                  HapticFeedback.selectionClick();
+                  _select(MeowTab.values[i]);
+                },
+                quality: lg.GlassQuality.premium,
+                backgroundQuality: lg.GlassQuality.standard,
+                selectedIconColor: mm.accent,
+                selectedLabelColor: mm.accent,
+                unselectedIconColor: mm.t1,
+                unselectedLabelColor: mm.t1,
+                iconSize: 23,
+                tabs: [for (final t in MeowTab.values) lg.GlassTab(icon: Icon(t.icon), label: t.label)],
               ),
       ),
     );

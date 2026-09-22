@@ -13,6 +13,7 @@
 - 版本号从 0.1.0 重新计数。
 
 ## 2026-09-20 · MeowX 壳（P1 第一轮）
+- `lib/main.dart`：`runApp` 前 `LiquidGlassWidgets.initialize()` 预热液态玻璃 shader，App 外层包 `LiquidGlassWidgets.wrap`（让玻璃跟随 App 的深浅色）；手机底栏换成 `liquid_glass_widgets` 的 `GlassTabBar.bottom`（Impeller 上真折射，Skia 上自动降级为模糊 + 高光）。
 - `lib/application.dart`：`home` 由 Bettbox `HomePage` 换成 `lib/meowx/app/meow_root.dart` 的 `MeowRoot`（手机底部 5 Tab / 宽屏左侧图标栏），主题改为 `meowThemeData`（系统蓝强调色 + MM token，不再动态取色）。Bettbox 原页面经「设置 → 高级」`ToolsView` 原样进入；Bettbox 内部 `toPage(PageLabel)` 经 `currentPageLabelProvider` 映射到 Tab 或 push。
 - `lib/models/config.dart`：`Config` 增加 `meow: MeowSettings`（`lib/models/meow.dart`，MeowX 自己的设置：DNS 模式 / 测速方式 / 节点卡片档位 / 同步间隔 / 覆写 / 本地代理 / 账户）；`openLogs` 默认 `false`，`safeFromJson` 不再强制打开日志流。
 - `lib/providers/state.dart`：`configState` 纳入 `meow`，随 Bettbox 偏好一起落盘。
