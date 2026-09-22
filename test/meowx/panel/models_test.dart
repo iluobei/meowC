@@ -88,4 +88,26 @@ void main() {
     expect(parseLoginLink(Uri.parse('miaomiaowu://login?host=https://p.example.com/&code=1'))?.base, 'https://p.example.com');
     expect(parseLoginLink(Uri.parse('clash://install-config?url=x')), isNull);
   });
+
+  test('Telegram 登录：start 响应', () {
+    final s = TelegramLoginStart.tryParse({'nonce': 'abc', 'deep_link': 'https://t.me/bot?start=tglogin_abc', 'expires_in': 180})!;
+    expect(s.nonce, 'abc');
+    expect(s.deepLink, 'https://t.me/bot?start=tglogin_abc');
+    expect(s.expiresIn, 180);
+    expect(TelegramLoginStart.tryParse({'nonce': 'abc', 'deep_link': 'x', 'expires_in': '90'})!.expiresIn, 90);
+    // 未启用 / 限流：只有 error，没有 nonce
+    expect(TelegramLoginStart.tryParse({'error': '未启用 Telegram 机器人'}), isNull);
+  });
+
+  test('Telegram 登录：poll 四种响应', () {
+    expect(TelegramLoginPoll.parse({'status': 'pending'}), isA<TelegramLoginPending>());
+    expect(TelegramLoginPoll.parse({'status': 'expired'}), isA<TelegramLoginExpired>());
+    final tfa = TelegramLoginPoll.parse({'status': 'approved', 'requires_2fa': true, 'two_factor_token': 'tf1'});
+    expect(tfa, isA<TelegramLoginDone>());
+    expect(((tfa as TelegramLoginDone).result as LoginNeeds2FA).twoFactorToken, 'tf1');
+    final ok = TelegramLoginPoll.parse({'token': 't', 'username': 'u', 'nickname': '', 'avatar_url': 'https://a/b.png'});
+    expect(((ok as TelegramLoginDone).result as LoginSuccess).nickname, 'u');
+    // 认不出的响应 → null，由调用方按 error 抛
+    expect(TelegramLoginPoll.parse({'error': 'invalid request'}), isNull);
+  });
 }

@@ -86,6 +86,60 @@ class LoginNeeds2FA extends LoginResult {
   final String twoFactorToken;
 }
 
+/// Telegram 登录：`POST /login/telegram/start` 的返回。
+class TelegramLoginStart {
+  const TelegramLoginStart({required this.nonce, required this.deepLink, required this.expiresIn});
+  final String nonce, deepLink;
+
+  /// 有效期（秒），到 0 视为过期
+  final int expiresIn;
+
+  static TelegramLoginStart? tryParse(Map<String, dynamic> json) {
+    final nonce = json['nonce']?.toString() ?? '';
+    final link = json['deep_link']?.toString() ?? '';
+    if (nonce.isEmpty || link.isEmpty) return null;
+    final expires = switch (json['expires_in']) {
+      int v => v,
+      num v => v.toInt(),
+      String v => int.tryParse(v) ?? 180,
+      _ => 180,
+    };
+    return TelegramLoginStart(nonce: nonce, deepLink: link, expiresIn: expires);
+  }
+}
+
+/// Telegram 登录：`POST /login/telegram/poll` 的三种结果。
+sealed class TelegramLoginPoll {
+  const TelegramLoginPoll();
+
+  /// 认不出的响应返回 null（调用方按 error 文案抛错）。
+  static TelegramLoginPoll? parse(Map<String, dynamic> json) {
+    switch (json['status']) {
+      case 'pending':
+        return const TelegramLoginPending();
+      case 'expired':
+        return const TelegramLoginExpired();
+    }
+    if (json['requires_2fa'] == true) return TelegramLoginDone(LoginNeeds2FA(json['two_factor_token']?.toString() ?? ''));
+    final ok = LoginSuccess.tryParse(json);
+    return ok == null ? null : TelegramLoginDone(ok);
+  }
+}
+
+class TelegramLoginPending extends TelegramLoginPoll {
+  const TelegramLoginPending();
+}
+
+class TelegramLoginExpired extends TelegramLoginPoll {
+  const TelegramLoginExpired();
+}
+
+/// 机器人侧已确认：拿到会话，或还要过两步验证。
+class TelegramLoginDone extends TelegramLoginPoll {
+  const TelegramLoginDone(this.result);
+  final LoginResult result;
+}
+
 /// 节点回程奖牌。
 class ReturnRoute {
   const ReturnRoute({required this.carrier, this.region, required this.routeType, required this.gold});

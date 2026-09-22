@@ -19,6 +19,10 @@ class PanelClient {
       _dio = dio ?? _directDio(),
       _cache = cache ?? const PrefsCertCache();
 
+  /// 发给主控的 User-Agent。Telegram 登录时机器人会把「来源 IP + 浏览器」摆给用户核对，
+  /// 得让用户认得出这是 MeowX 客户端；启动后由 MeowRoot 补上版本号。
+  static String userAgent = 'MeowX (${Platform.isAndroid ? 'Android' : Platform.isWindows ? 'Windows' : Platform.operatingSystem})';
+
   /// `https://host[:port]`，无尾斜杠
   final String base;
   final Dio _dio;
@@ -62,7 +66,11 @@ class PanelClient {
   Future<Uint8List> _fetchCert() async {
     final res = await _dio.get<dynamic>(
       '$base/api/secure/cert',
-      options: Options(responseType: ResponseType.json, receiveTimeout: const Duration(seconds: 15)),
+      options: Options(
+        responseType: ResponseType.json,
+        receiveTimeout: const Duration(seconds: 15),
+        headers: {HttpHeaders.userAgentHeader: userAgent},
+      ),
     );
     if (res.statusCode != 200 || res.data is! Map) throw PanelException('无法获取主控证书（HTTP ${res.statusCode}）');
     final json = (res.data as Map).cast<String, dynamic>();
@@ -101,7 +109,11 @@ class PanelClient {
         '$base/api/secure/rpc',
         data: Stream.fromIterable([envelope]),
         options: Options(
-          headers: {Headers.contentTypeHeader: 'application/octet-stream', Headers.contentLengthHeader: envelope.length},
+          headers: {
+            Headers.contentTypeHeader: 'application/octet-stream',
+            Headers.contentLengthHeader: envelope.length,
+            HttpHeaders.userAgentHeader: userAgent,
+          },
           responseType: ResponseType.bytes,
           receiveTimeout: const Duration(seconds: 20),
           validateStatus: (_) => true,
@@ -160,6 +172,24 @@ class PanelClient {
 
   /// 扫码登录：一次性码，无 token
   Future<LoginResult> loginQr(String code) async => _loginResult(await rpc('/login/qr', payload: {'code': code}));
+
+  // ---- Telegram 登录：客户端申请 nonce → 用户在 Telegram 里点机器人确认 → 客户端轮询拿会话 ----
+
+  /// 主控开了机器人才有这条路；没开就不显示按钮。
+  Future<bool> telegramLoginAvailable() async {
+    final r = await rpc('/login/telegram/available', method: 'GET');
+    return r['enabled'] == true;
+  }
+
+  Future<TelegramLoginStart> telegramLoginStart() async {
+    final r = await rpc('/login/telegram/start');
+    return TelegramLoginStart.tryParse(r) ?? (throw PanelException(_error(r) ?? 'Telegram 登录不可用'));
+  }
+
+  Future<TelegramLoginPoll> telegramLoginPoll(String nonce) async {
+    final r = await rpc('/login/telegram/poll', payload: {'nonce': nonce});
+    return TelegramLoginPoll.parse(r) ?? (throw PanelException(_error(r) ?? '登录失败'));
+  }
 
   LoginResult _loginResult(Map<String, dynamic> r) {
     if (r['requires_2fa'] == true) {

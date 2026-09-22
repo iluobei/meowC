@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/models/models.dart';
 import 'package:bett_box/pages/pages.dart';
@@ -6,6 +8,7 @@ import 'package:bett_box/state.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/strings.dart';
 import '../../config/direct_profile.dart';
@@ -259,8 +262,12 @@ class _AccountCard extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 8),
+            // Windows 没有扫码：主控网页「扫码登录」对话框里的「登录客户端」按钮用 miaomiaowu://login 深链唤起本 App
+            //（window.dart 启动时把 miaomiaowu 注册到 HKCU，app_links 把链接转给已在跑的实例，controller.initLink 兑换）
             Text(
-              '在桌面端「个人菜单 → 扫码登录」出示二维码，用手机扫一扫即可登录',
+              system.isAndroid
+                  ? '在桌面端「个人菜单 → 扫码登录」出示二维码，用手机扫一扫即可登录'
+                  : '在网页端「个人菜单 → 扫码登录」里点「登录客户端」，MeowX 会自动打开并完成登录',
               style: TextStyle(fontSize: MeowFont.caption2, color: mm.t3),
             ),
           ],
@@ -270,7 +277,8 @@ class _AccountCard extends ConsumerWidget {
   }
 }
 
-/// 账号密码登录（含二步验证）。
+/// 账号密码登录（含二步验证）；主控开了 Telegram 机器人时多一条「用 Telegram 登录」：
+/// start 拿 nonce + 深链 → 打开 Telegram → 每 2 秒 poll，机器人侧确认后即登录（开了两步验证再走验证码）。
 Future<void> showLoginSheet(
   BuildContext context,
   WidgetRef ref, {
@@ -283,6 +291,55 @@ Future<void> showLoginSheet(
   final code = TextEditingController();
   String? twoFactorToken;
   bool busy = false;
+  // Telegram 登录状态：地址变了重新查可用性（防抖 + 序号丢弃过期结果）；发起后 tgNonce 非空、倒计时 + 轮询两个 Timer
+  bool tgAvailable = false;
+  int tgCheckSeq = 0;
+  Timer? tgCheckDebounce;
+  String? tgNonce;
+  String? tgLink;
+  int tgRemaining = 0;
+  bool tgExpired = false;
+  bool tgPolling = false;
+  Timer? tgTick;
+  Timer? tgPoll;
+  void Function(VoidCallback)? rebuild;
+
+  void stopTelegram() {
+    tgTick?.cancel();
+    tgPoll?.cancel();
+    tgTick = null;
+    tgPoll = null;
+    tgNonce = null;
+    tgLink = null;
+    tgRemaining = 0;
+    tgPolling = false;
+  }
+
+  Future<void> checkTelegram() async {
+    final seq = ++tgCheckSeq;
+    final h = host.text.trim();
+    bool ok = false;
+    if (h.isNotEmpty) {
+      final actions = ref.read(accountActionsProvider);
+      try {
+        ok = await actions.telegramLoginAvailable(actions.clientFor(h));
+      } catch (_) {
+        ok = false;
+      }
+    }
+    if (seq != tgCheckSeq) return;   // 地址又变了，这次结果作废
+    if (ok != tgAvailable) {
+      tgAvailable = ok;               // sheet 还没建出来时 rebuild 为空，先记着，首帧就能读到
+      rebuild?.call(() {});
+    }
+  }
+
+  host.addListener(() {
+    tgCheckDebounce?.cancel();
+    tgCheckDebounce = Timer(const Duration(milliseconds: 600), checkTelegram);
+  });
+  unawaited(checkTelegram());
+
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -290,6 +347,9 @@ Future<void> showLoginSheet(
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, setState) {
         final mm = ctx.mm;
+        rebuild = (fn) {
+          if (ctx.mounted) setState(fn);
+        };
         Future<void> submit() async {
           setState(() => busy = true);
           try {
@@ -318,6 +378,79 @@ Future<void> showLoginSheet(
           }
         }
 
+        Future<void> openTelegram() async {
+          final link = tgLink;
+          if (link == null) return;
+          final uri = Uri.tryParse(link);
+          if (uri == null || !await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+            onError(const PanelException('打不开 Telegram，请确认已安装'));
+          }
+        }
+
+        Future<void> pollTelegram() async {
+          final nonce = tgNonce;
+          if (nonce == null || tgPolling) return;
+          tgPolling = true;
+          try {
+            final actions = ref.read(accountActionsProvider);
+            final r = await actions.telegramLoginPoll(actions.clientFor(host.text), nonce);
+            if (tgNonce != nonce) return;   // 已取消 / 已重新发起
+            switch (r) {
+              case TelegramLoginPending():
+                break;
+              case TelegramLoginExpired():
+                stopTelegram();
+                if (ctx.mounted) setState(() => tgExpired = true);
+              case TelegramLoginDone(:final result):
+                stopTelegram();
+                if (result is LoginNeeds2FA) {
+                  if (ctx.mounted) setState(() => twoFactorToken = result.twoFactorToken);
+                } else if (ctx.mounted) {
+                  Navigator.of(ctx).pop();
+                }
+            }
+          } catch (e) {
+            stopTelegram();
+            onError(e);
+            if (ctx.mounted) Navigator.of(ctx).pop();
+          } finally {
+            tgPolling = false;
+          }
+        }
+
+        Future<void> startTelegram() async {
+          setState(() => busy = true);
+          try {
+            final actions = ref.read(accountActionsProvider);
+            final s = await actions.telegramLoginStart(actions.clientFor(host.text));
+            stopTelegram();
+            tgNonce = s.nonce;
+            tgLink = s.deepLink;
+            tgRemaining = s.expiresIn;
+            tgExpired = false;
+            tgTick = Timer.periodic(const Duration(seconds: 1), (_) {
+              if (tgRemaining <= 0) return;
+              tgRemaining--;
+              if (ctx.mounted) setState(() {});
+              if (tgRemaining <= 0) {
+                stopTelegram();
+                if (ctx.mounted) setState(() => tgExpired = true);
+              }
+            });
+            tgPoll = Timer.periodic(const Duration(seconds: 2), (_) => pollTelegram());
+            if (ctx.mounted) setState(() {});
+            await openTelegram();
+          } catch (e) {
+            onError(e);
+            if (ctx.mounted) Navigator.of(ctx).pop();
+          } finally {
+            if (ctx.mounted) setState(() => busy = false);
+          }
+        }
+
+        final waitingTelegram = tgNonce != null;
+        final remaining = '${(tgRemaining ~/ 60).toString().padLeft(2, '0')}:${(tgRemaining % 60).toString().padLeft(2, '0')}';
+
         // 键盘高度留在外层：横屏 + 键盘时剩余高度放不下整张表单，内层滚动才能滑到密码框和登录钮
         return Padding(
           padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
@@ -334,7 +467,11 @@ Future<void> showLoginSheet(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  twoFactorToken == null ? '登录妙妙屋X' : '二步验证',
+                  twoFactorToken != null
+                      ? '二步验证'
+                      : waitingTelegram
+                          ? 'Telegram 登录'
+                          : '登录妙妙屋X',
                   style: TextStyle(
                     fontSize: MeowFont.title3,
                     fontWeight: FontWeight.w600,
@@ -342,7 +479,64 @@ Future<void> showLoginSheet(
                   ),
                 ),
                 const SizedBox(height: 12),
-                if (twoFactorToken == null) ...[
+                if (twoFactorToken != null) ...[
+                  TextField(
+                    controller: code,
+                    decoration: const InputDecoration(labelText: '验证码 / 恢复码'),
+                    autofocus: true,
+                    onSubmitted: (_) => submit(),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: busy ? null : submit,
+                      child: Text(busy ? '登录中…' : '登录'),
+                    ),
+                  ),
+                ] else if (waitingTelegram) ...[
+                  Text(
+                    tgExpired
+                        ? '登录请求已过期（3 分钟内未确认），请重新发起'
+                        : '已在 Telegram 打开机器人，请在对话里核对来源信息后点「确认登录」；确认后这里会自动登录。',
+                    style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2),
+                  ),
+                  if (!tgExpired) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: mm.accent),
+                        ),
+                        const SizedBox(width: 8),
+                        Text('等待确认 · 剩余 $remaining', style: MeowFont.mono(size: MeowFont.footnote, color: mm.t3)),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            stopTelegram();
+                            setState(() => tgExpired = false);
+                          },
+                          child: const Text('取消'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: busy ? null : (tgExpired ? startTelegram : openTelegram),
+                          child: Text(tgExpired ? '重新发起' : '再次打开 Telegram'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else ...[
                   TextField(
                     controller: host,
                     decoration: const InputDecoration(
@@ -363,21 +557,31 @@ Future<void> showLoginSheet(
                     obscureText: true,
                     onSubmitted: (_) => submit(),
                   ),
-                ] else
-                  TextField(
-                    controller: code,
-                    decoration: const InputDecoration(labelText: '验证码 / 恢复码'),
-                    autofocus: true,
-                    onSubmitted: (_) => submit(),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: busy ? null : submit,
+                      child: Text(busy ? '登录中…' : '登录'),
+                    ),
                   ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: busy ? null : submit,
-                    child: Text(busy ? '登录中…' : '登录'),
-                  ),
-                ),
+                  if (tgAvailable) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: busy ? null : startTelegram,
+                        icon: const Icon(Icons.send_rounded, size: 18),
+                        label: const Text('用 Telegram 登录'),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '需要先在主控网页绑定 Telegram；开了两步验证的账号确认后仍要输验证码',
+                      style: TextStyle(fontSize: MeowFont.caption2, color: mm.t3),
+                    ),
+                  ],
+                ],
               ],
             ),
           ),
@@ -385,6 +589,11 @@ Future<void> showLoginSheet(
       },
     ),
   );
+  // sheet 关掉（含系统返回 / 点外面）后把两个 Timer 和防抖收掉，别让轮询在后台继续跑
+  tgCheckDebounce?.cancel();
+  tgCheckSeq++;
+  rebuild = null;
+  stopTelegram();
 }
 
 /// 我的订阅卡：行 = 名 + 「已用 X / Y · 到期 yyyy-MM-dd」+ 下载图标；点击 = 下载并切换为当前。

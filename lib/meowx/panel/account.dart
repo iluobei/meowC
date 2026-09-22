@@ -80,6 +80,36 @@ class AccountActions {
     await refreshSubscriptions();
   }
 
+  /// 登录 sheet 用：按填的主控地址拿客户端（同一地址复用缓存的实例，轮询时不必每次重建）。
+  PanelClient clientFor(String host) => _client(host);
+
+  /// Telegram 登录是否可用：主控没开机器人 / 连不上都算不可用，按钮不显示。
+  Future<bool> telegramLoginAvailable(PanelClient client) async {
+    try {
+      return await client.telegramLoginAvailable();
+    } catch (e) {
+      commonPrint.log('telegramLoginAvailable failed: $e');
+      return false;
+    }
+  }
+
+  Future<TelegramLoginStart> telegramLoginStart(PanelClient client) => client.telegramLoginStart();
+
+  /// 轮询一次；机器人侧确认后与密码登录一样入库，成功顺带拉订阅（同 loginWithCode）。
+  Future<TelegramLoginPoll> telegramLoginPoll(PanelClient client, String nonce) async {
+    final r = await client.telegramLoginPoll(nonce);
+    if (r is TelegramLoginDone) {
+      switch (r.result) {
+        case LoginSuccess ok:
+          await _store(client.base, ok);
+          await refreshSubscriptions();
+        case LoginNeeds2FA():
+          _update((a) => a.copyWith(host: client.base));
+      }
+    }
+    return r;
+  }
+
   Future<void> _store(String base, LoginSuccess ok) async {
     _update((a) => a.copyWith(host: base, token: ok.token, nickname: ok.nickname, avatarUrl: ok.avatarUrl));
   }
