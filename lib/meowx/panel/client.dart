@@ -194,7 +194,8 @@ class PanelClient {
   }
 
   Future<TelegramLoginPoll> telegramLoginPoll(String nonce) async {
-    final r = await rpc('/login/telegram/poll', payload: {'nonce': nonce});
+    // 键名用 login_nonce：rpc() 的内层 JSON 自带防重放字段 nonce，会把 payload 里同名的键盖掉（主控两个键都认）
+    final r = await rpc('/login/telegram/poll', payload: {'login_nonce': nonce});
     return TelegramLoginPoll.parse(r) ?? (throw PanelException(_error(r) ?? '登录失败'));
   }
 
