@@ -7,6 +7,7 @@ import 'package:bett_box/state.dart';
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../config/direct_profile.dart';
 import '../state/meow_settings.dart';
 import 'client.dart';
 import 'models.dart';
@@ -84,21 +85,29 @@ class AccountActions {
     _update((a) => a.copyWith(host: base, token: ok.token, nickname: ok.nickname, avatarUrl: ok.avatarUrl));
   }
 
-  /// 登出：清 token / 昵称 / 头像（保留主控地址），并删掉从这个主控导入的订阅档（用户的配置不该留在设备上；
-  /// 当前档在其中时 deleteProfile 会自动切到剩下的第一份 —— 至少还有内置直连档）。
+  /// 登出：先删掉从这个主控导入的订阅档（用户的配置不该留在设备上），再清 token / 昵称 / 头像（保留主控地址）。
+  /// 删档抛错就原样抛给界面提示，此时仍是登录态、可重试。当前档在其中时先切到剩下的第一份自有订阅，
+  /// 没有才落到内置直连档（deleteProfile 自己会切到内部顺序的第一份，通常正是直连档）。
   Future<void> logout() async {
     final host = Uri.tryParse(_account.host)?.host ?? '';
+    if (host.isNotEmpty) {
+      final profiles = ref.read(profilesProvider);
+      final mine = profiles.where((p) => p.url.isNotEmpty && Uri.tryParse(p.url)?.host == host).toList();
+      final mineIds = mine.map((p) => p.id).toSet();
+      if (mineIds.contains(ref.read(currentProfileIdProvider))) {
+        final next = profiles.firstWhereOrNull((p) => !mineIds.contains(p.id) && !isDirectProfile(p.id));
+        ref.read(currentProfileIdProvider.notifier).value = next?.id ?? directProfileId;
+      }
+      for (final p in mine) {
+        await globalState.appController.deleteProfile(p.id);
+      }
+    }
     _update((a) => a.copyWith(token: '', nickname: '', avatarUrl: ''));
     ref.read(remoteSubsProvider.notifier).state = const AsyncValue.data([]);
     ref.read(medalsProvider.notifier).state = const {};
     ref.read(unlocksProvider.notifier).state = const {};
     ref.read(panelFeaturesProvider.notifier).state = const PanelFeatures();
     _extrasAt = null;
-    if (host.isEmpty) return;
-    final mine = ref.read(profilesProvider).where((p) => p.url.isNotEmpty && Uri.tryParse(p.url)?.host == host).toList();
-    for (final p in mine) {
-      await globalState.appController.deleteProfile(p.id);
-    }
   }
 
   Future<void> refreshSubscriptions() async {

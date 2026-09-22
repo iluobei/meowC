@@ -214,7 +214,13 @@ class _AccountCard extends ConsumerWidget {
               ),
               if (loggedIn)
                 TextButton(
-                  onPressed: () => ref.read(accountActionsProvider).logout(),
+                  onPressed: () async {
+                    try {
+                      await ref.read(accountActionsProvider).logout();
+                    } catch (e) {
+                      onError(e);
+                    }
+                  },
                   child: const Text('退出'),
                 ),
             ],
