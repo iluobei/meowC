@@ -3,7 +3,7 @@
 MeowX 的 Android 与 Windows 客户端，基于 [Bettbox](https://github.com/appshubcc/Bettbox)（Flutter + [mihomo](https://github.com/MetaCubeX/mihomo) 内核）修改。界面复刻 MeowX iOS / iPad 版：手机端底部五个 Tab（首页 / 代理 / 连接 / 配置 / 设置），宽屏（Windows、平板横屏）左侧图标栏 + 两栏内容；Bettbox 的原有功能全部保留在「设置 → 高级」。
 
 - 许可证：GPL-3.0（见 `LICENSE`、`NOTICE.md`、`CHANGES-FROM-BETTBOX.md`）
-- 下载：[Releases](https://github.com/iluobei/meowC/releases)；开发中的构建在 [Actions](https://github.com/iluobei/meowC/actions/workflows/build.yaml) 的 artifacts 里
+- 下载：[Releases](https://github.com/mmwx-group/meowC/releases)；开发中的构建在 [Actions](https://github.com/mmwx-group/meowC/actions/workflows/build.yaml) 的 artifacts 里
 - 支持：Android 8.0+（arm64 / universal）、Windows 10+（x64）
 
 ## 使用

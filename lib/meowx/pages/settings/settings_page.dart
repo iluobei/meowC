@@ -298,7 +298,7 @@ class SettingsPage extends ConsumerWidget {
               title: S.openSourceLicense,
               subtitle: 'GPL-3.0 · 基于 Bettbox / FlClash / mihomo',
               trailing: Icon(Icons.open_in_new_rounded, size: 18, color: mm.t3),
-              onTap: () => globalState.openUrl('https://github.com/iluobei/meowC'),
+              onTap: () => globalState.openUrl('https://github.com/mmwx-group/meowC'),
             ),
           ],
         ),

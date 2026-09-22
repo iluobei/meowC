@@ -41,7 +41,7 @@ class AboutView extends StatelessWidget {
             title: 'Github Releases',
             icon: Icons.star,
             onTap: () =>
-                globalState.openUrl('https://github.com/iluobei/meowC'),
+                globalState.openUrl('https://github.com/mmwx-group/meowC'),
           ),
           right: _LinkGridTile(
             title: appLocalizations.checkUpdate,
@@ -54,7 +54,7 @@ class AboutView extends StatelessWidget {
             title: 'Issues',
             icon: Icons.launch,
             onTap: () =>
-                globalState.openUrl('https://github.com/iluobei/meowC/issues'),
+                globalState.openUrl('https://github.com/mmwx-group/meowC/issues'),
           ),
           right: _LinkGridTile(
             title: 'Bettbox',

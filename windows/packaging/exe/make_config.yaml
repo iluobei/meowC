@@ -2,7 +2,7 @@ script_template: inno_setup.iss
 app_id: 3BC7304F-FAA1-476F-AD61-5D269C8B56A2
 app_name: MeowX
 publisher: miaomiaowu
-publisher_url: https://github.com/iluobei/meowC
+publisher_url: https://github.com/mmwx-group/meowC
 display_name: MeowX
 executable_name: MeowX.exe
 output_base_file_name: MeowX.exe

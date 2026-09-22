@@ -8,7 +8,7 @@
 - 窗口最小尺寸 380×400 → 900×600（MeowX 平板式三栏布局）。
 - 订阅拉取 UA 与 mihomo `global-ua` 改为 `mihomo/1.19.0 (miaomiaowu; <OS>)`，与 MeowX iOS 端一致。
 - 默认测速地址改为 `https://cp.cloudflare.com/generate_204`。
-- 自更新检查指向 `iluobei/meowC`，下载直链前缀 `MeowX-`。
+- 自更新检查指向 `mmwx-group/meowC`，下载直链前缀 `MeowX-`。
 - CI：新增 `ci.yaml`（analyze + test）；`build.yaml` 只保留 Android（arm64 / universal）与 Windows（amd64），移除 Linux / macOS 与 SignPath 签名步骤，增加 `workflow_dispatch` 手动构建。
 - 版本号从 0.1.0 重新计数。
 
