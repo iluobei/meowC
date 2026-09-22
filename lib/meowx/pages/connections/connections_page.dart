@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bett_box/clash/clash.dart';
+import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
 import 'package:bett_box/providers/providers.dart';
@@ -100,7 +101,8 @@ class _ConnectionsPageState extends ConsumerState<ConnectionsPage> {
           c.metadata.destinationIP.contains(q) ||
           c.chains.any((s) => s.toLowerCase().contains(q)) ||
           c.rule.toLowerCase().contains(q) ||
-          c.rulePayload.toLowerCase().contains(q);
+          c.rulePayload.toLowerCase().contains(q) ||
+          _inboundOf(c).toLowerCase().contains(q);
     }).toList();
   }
 
@@ -302,6 +304,14 @@ String _hostOf(TrackerInfo c) => c.metadata.host.isNotEmpty ? c.metadata.host : 
 String _targetOf(TrackerInfo c) => c.chains.isEmpty ? '—' : c.chains.first;
 String _ruleOf(TrackerInfo c) => c.rulePayload.isEmpty ? c.rule : '${c.rule}(${c.rulePayload})';
 
+/// 入站：TUN / HTTP（系统代理、本地代理）/ SOCKS，来自核心的 metadata.type。
+String _inboundOf(TrackerInfo c) => switch (c.metadata.type) {
+  'Tun' => 'TUN',
+  'HTTP' || 'HTTPS' => 'HTTP',
+  'Socks4' || 'Socks5' => 'SOCKS',
+  final t => t,
+};
+
 /// 连接行：TypeBadge(UDP 橙 / TCP accent) + host；↳ target 紫 + rule t3；↑ ↓ 时长；右侧关闭。
 class _ConnRow extends StatelessWidget {
   const _ConnRow({required this.c, required this.selected, required this.onClose, this.onTap});
@@ -314,6 +324,8 @@ class _ConnRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final mm = context.mm;
     final udp = c.metadata.network.toLowerCase() == 'udp';
+    // 只在 Windows 的行上标入站：那里 TUN 与系统代理并存；Android 全走 VPN（TUN），每行都标是噪音
+    final inbound = system.isWindows ? _inboundOf(c) : '';
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: GlassCard(
@@ -330,6 +342,10 @@ class _ConnRow extends StatelessWidget {
                   Row(
                     children: [
                       TypeBadge(udp ? 'UDP' : 'TCP', color: udp ? mm.orange : mm.accent),
+                      if (inbound.isNotEmpty) ...[
+                        const SizedBox(width: 4),
+                        TypeBadge(inbound, color: inbound == 'TUN' ? mm.teal : mm.t2),
+                      ],
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text('${_hostOf(c)}:${c.metadata.destinationPort}', maxLines: 1, overflow: TextOverflow.ellipsis,
@@ -419,6 +435,7 @@ class _ConnDetail extends StatelessWidget {
           child: Column(
             children: [
               line('网络', c.metadata.network.toUpperCase()),
+              if (_inboundOf(c).isNotEmpty) line('入站', '${_inboundOf(c)}${c.metadata.inboundName.isEmpty ? '' : ' · ${c.metadata.inboundName}'}'),
               line('主机', '${_hostOf(c)}:${c.metadata.destinationPort}'),
               if (c.metadata.destinationIP.isNotEmpty && c.metadata.host.isNotEmpty) line('目标 IP', c.metadata.destinationIP),
               line('已持续', fmtElapsed(DateTime.now().difference(c.start))),

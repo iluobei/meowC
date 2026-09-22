@@ -574,7 +574,9 @@ as int,
 /// @nodoc
 mixin _$Metadata {
 
- int get uid; String get network; String get sourceIP; String get sourcePort; String get destinationIP; String get destinationPort; String get host; DnsMode? get dnsMode; String get process; String get processPath; String get remoteDestination; List<String> get sourceGeoIP; List<String> get destinationGeoIP; String get destinationIPASN; String get sourceIPASN; String get specialRules; String get specialProxy;
+ int get uid; String get network; String get sourceIP; String get sourcePort; String get destinationIP; String get destinationPort; String get host; DnsMode? get dnsMode; String get process; String get processPath; String get remoteDestination; List<String> get sourceGeoIP; List<String> get destinationGeoIP; String get destinationIPASN; String get sourceIPASN; String get specialRules; String get specialProxy;// MeowX：入站类型（mihomo metadata.type：Tun / HTTP / HTTPS / Socks5 …）与入站名（DEFAULT-TUN / DEFAULT-MIXED），
+// 用来在连接页区分一条连接走的是 TUN 还是系统代理
+ String get type; String get inboundName;
 /// Create a copy of Metadata
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -587,16 +589,16 @@ $MetadataCopyWith<Metadata> get copyWith => _$MetadataCopyWithImpl<Metadata>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Metadata&&(identical(other.uid, uid) || other.uid == uid)&&(identical(other.network, network) || other.network == network)&&(identical(other.sourceIP, sourceIP) || other.sourceIP == sourceIP)&&(identical(other.sourcePort, sourcePort) || other.sourcePort == sourcePort)&&(identical(other.destinationIP, destinationIP) || other.destinationIP == destinationIP)&&(identical(other.destinationPort, destinationPort) || other.destinationPort == destinationPort)&&(identical(other.host, host) || other.host == host)&&(identical(other.dnsMode, dnsMode) || other.dnsMode == dnsMode)&&(identical(other.process, process) || other.process == process)&&(identical(other.processPath, processPath) || other.processPath == processPath)&&(identical(other.remoteDestination, remoteDestination) || other.remoteDestination == remoteDestination)&&const DeepCollectionEquality().equals(other.sourceGeoIP, sourceGeoIP)&&const DeepCollectionEquality().equals(other.destinationGeoIP, destinationGeoIP)&&(identical(other.destinationIPASN, destinationIPASN) || other.destinationIPASN == destinationIPASN)&&(identical(other.sourceIPASN, sourceIPASN) || other.sourceIPASN == sourceIPASN)&&(identical(other.specialRules, specialRules) || other.specialRules == specialRules)&&(identical(other.specialProxy, specialProxy) || other.specialProxy == specialProxy));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Metadata&&(identical(other.uid, uid) || other.uid == uid)&&(identical(other.network, network) || other.network == network)&&(identical(other.sourceIP, sourceIP) || other.sourceIP == sourceIP)&&(identical(other.sourcePort, sourcePort) || other.sourcePort == sourcePort)&&(identical(other.destinationIP, destinationIP) || other.destinationIP == destinationIP)&&(identical(other.destinationPort, destinationPort) || other.destinationPort == destinationPort)&&(identical(other.host, host) || other.host == host)&&(identical(other.dnsMode, dnsMode) || other.dnsMode == dnsMode)&&(identical(other.process, process) || other.process == process)&&(identical(other.processPath, processPath) || other.processPath == processPath)&&(identical(other.remoteDestination, remoteDestination) || other.remoteDestination == remoteDestination)&&const DeepCollectionEquality().equals(other.sourceGeoIP, sourceGeoIP)&&const DeepCollectionEquality().equals(other.destinationGeoIP, destinationGeoIP)&&(identical(other.destinationIPASN, destinationIPASN) || other.destinationIPASN == destinationIPASN)&&(identical(other.sourceIPASN, sourceIPASN) || other.sourceIPASN == sourceIPASN)&&(identical(other.specialRules, specialRules) || other.specialRules == specialRules)&&(identical(other.specialProxy, specialProxy) || other.specialProxy == specialProxy)&&(identical(other.type, type) || other.type == type)&&(identical(other.inboundName, inboundName) || other.inboundName == inboundName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,uid,network,sourceIP,sourcePort,destinationIP,destinationPort,host,dnsMode,process,processPath,remoteDestination,const DeepCollectionEquality().hash(sourceGeoIP),const DeepCollectionEquality().hash(destinationGeoIP),destinationIPASN,sourceIPASN,specialRules,specialProxy);
+int get hashCode => Object.hashAll([runtimeType,uid,network,sourceIP,sourcePort,destinationIP,destinationPort,host,dnsMode,process,processPath,remoteDestination,const DeepCollectionEquality().hash(sourceGeoIP),const DeepCollectionEquality().hash(destinationGeoIP),destinationIPASN,sourceIPASN,specialRules,specialProxy,type,inboundName]);
 
 @override
 String toString() {
-  return 'Metadata(uid: $uid, network: $network, sourceIP: $sourceIP, sourcePort: $sourcePort, destinationIP: $destinationIP, destinationPort: $destinationPort, host: $host, dnsMode: $dnsMode, process: $process, processPath: $processPath, remoteDestination: $remoteDestination, sourceGeoIP: $sourceGeoIP, destinationGeoIP: $destinationGeoIP, destinationIPASN: $destinationIPASN, sourceIPASN: $sourceIPASN, specialRules: $specialRules, specialProxy: $specialProxy)';
+  return 'Metadata(uid: $uid, network: $network, sourceIP: $sourceIP, sourcePort: $sourcePort, destinationIP: $destinationIP, destinationPort: $destinationPort, host: $host, dnsMode: $dnsMode, process: $process, processPath: $processPath, remoteDestination: $remoteDestination, sourceGeoIP: $sourceGeoIP, destinationGeoIP: $destinationGeoIP, destinationIPASN: $destinationIPASN, sourceIPASN: $sourceIPASN, specialRules: $specialRules, specialProxy: $specialProxy, type: $type, inboundName: $inboundName)';
 }
 
 
@@ -607,7 +609,7 @@ abstract mixin class $MetadataCopyWith<$Res>  {
   factory $MetadataCopyWith(Metadata value, $Res Function(Metadata) _then) = _$MetadataCopyWithImpl;
 @useResult
 $Res call({
- int uid, String network, String sourceIP, String sourcePort, String destinationIP, String destinationPort, String host, DnsMode? dnsMode, String process, String processPath, String remoteDestination, List<String> sourceGeoIP, List<String> destinationGeoIP, String destinationIPASN, String sourceIPASN, String specialRules, String specialProxy
+ int uid, String network, String sourceIP, String sourcePort, String destinationIP, String destinationPort, String host, DnsMode? dnsMode, String process, String processPath, String remoteDestination, List<String> sourceGeoIP, List<String> destinationGeoIP, String destinationIPASN, String sourceIPASN, String specialRules, String specialProxy, String type, String inboundName
 });
 
 
@@ -624,7 +626,7 @@ class _$MetadataCopyWithImpl<$Res>
 
 /// Create a copy of Metadata
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? uid = null,Object? network = null,Object? sourceIP = null,Object? sourcePort = null,Object? destinationIP = null,Object? destinationPort = null,Object? host = null,Object? dnsMode = freezed,Object? process = null,Object? processPath = null,Object? remoteDestination = null,Object? sourceGeoIP = null,Object? destinationGeoIP = null,Object? destinationIPASN = null,Object? sourceIPASN = null,Object? specialRules = null,Object? specialProxy = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? uid = null,Object? network = null,Object? sourceIP = null,Object? sourcePort = null,Object? destinationIP = null,Object? destinationPort = null,Object? host = null,Object? dnsMode = freezed,Object? process = null,Object? processPath = null,Object? remoteDestination = null,Object? sourceGeoIP = null,Object? destinationGeoIP = null,Object? destinationIPASN = null,Object? sourceIPASN = null,Object? specialRules = null,Object? specialProxy = null,Object? type = null,Object? inboundName = null,}) {
   return _then(_self.copyWith(
 uid: null == uid ? _self.uid : uid // ignore: cast_nullable_to_non_nullable
 as int,network: null == network ? _self.network : network // ignore: cast_nullable_to_non_nullable
@@ -643,6 +645,8 @@ as List<String>,destinationIPASN: null == destinationIPASN ? _self.destinationIP
 as String,sourceIPASN: null == sourceIPASN ? _self.sourceIPASN : sourceIPASN // ignore: cast_nullable_to_non_nullable
 as String,specialRules: null == specialRules ? _self.specialRules : specialRules // ignore: cast_nullable_to_non_nullable
 as String,specialProxy: null == specialProxy ? _self.specialProxy : specialProxy // ignore: cast_nullable_to_non_nullable
+as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as String,inboundName: null == inboundName ? _self.inboundName : inboundName // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -728,10 +732,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int uid,  String network,  String sourceIP,  String sourcePort,  String destinationIP,  String destinationPort,  String host,  DnsMode? dnsMode,  String process,  String processPath,  String remoteDestination,  List<String> sourceGeoIP,  List<String> destinationGeoIP,  String destinationIPASN,  String sourceIPASN,  String specialRules,  String specialProxy)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int uid,  String network,  String sourceIP,  String sourcePort,  String destinationIP,  String destinationPort,  String host,  DnsMode? dnsMode,  String process,  String processPath,  String remoteDestination,  List<String> sourceGeoIP,  List<String> destinationGeoIP,  String destinationIPASN,  String sourceIPASN,  String specialRules,  String specialProxy,  String type,  String inboundName)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Metadata() when $default != null:
-return $default(_that.uid,_that.network,_that.sourceIP,_that.sourcePort,_that.destinationIP,_that.destinationPort,_that.host,_that.dnsMode,_that.process,_that.processPath,_that.remoteDestination,_that.sourceGeoIP,_that.destinationGeoIP,_that.destinationIPASN,_that.sourceIPASN,_that.specialRules,_that.specialProxy);case _:
+return $default(_that.uid,_that.network,_that.sourceIP,_that.sourcePort,_that.destinationIP,_that.destinationPort,_that.host,_that.dnsMode,_that.process,_that.processPath,_that.remoteDestination,_that.sourceGeoIP,_that.destinationGeoIP,_that.destinationIPASN,_that.sourceIPASN,_that.specialRules,_that.specialProxy,_that.type,_that.inboundName);case _:
   return orElse();
 
 }
@@ -749,10 +753,10 @@ return $default(_that.uid,_that.network,_that.sourceIP,_that.sourcePort,_that.de
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int uid,  String network,  String sourceIP,  String sourcePort,  String destinationIP,  String destinationPort,  String host,  DnsMode? dnsMode,  String process,  String processPath,  String remoteDestination,  List<String> sourceGeoIP,  List<String> destinationGeoIP,  String destinationIPASN,  String sourceIPASN,  String specialRules,  String specialProxy)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int uid,  String network,  String sourceIP,  String sourcePort,  String destinationIP,  String destinationPort,  String host,  DnsMode? dnsMode,  String process,  String processPath,  String remoteDestination,  List<String> sourceGeoIP,  List<String> destinationGeoIP,  String destinationIPASN,  String sourceIPASN,  String specialRules,  String specialProxy,  String type,  String inboundName)  $default,) {final _that = this;
 switch (_that) {
 case _Metadata():
-return $default(_that.uid,_that.network,_that.sourceIP,_that.sourcePort,_that.destinationIP,_that.destinationPort,_that.host,_that.dnsMode,_that.process,_that.processPath,_that.remoteDestination,_that.sourceGeoIP,_that.destinationGeoIP,_that.destinationIPASN,_that.sourceIPASN,_that.specialRules,_that.specialProxy);case _:
+return $default(_that.uid,_that.network,_that.sourceIP,_that.sourcePort,_that.destinationIP,_that.destinationPort,_that.host,_that.dnsMode,_that.process,_that.processPath,_that.remoteDestination,_that.sourceGeoIP,_that.destinationGeoIP,_that.destinationIPASN,_that.sourceIPASN,_that.specialRules,_that.specialProxy,_that.type,_that.inboundName);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -769,10 +773,10 @@ return $default(_that.uid,_that.network,_that.sourceIP,_that.sourcePort,_that.de
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int uid,  String network,  String sourceIP,  String sourcePort,  String destinationIP,  String destinationPort,  String host,  DnsMode? dnsMode,  String process,  String processPath,  String remoteDestination,  List<String> sourceGeoIP,  List<String> destinationGeoIP,  String destinationIPASN,  String sourceIPASN,  String specialRules,  String specialProxy)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int uid,  String network,  String sourceIP,  String sourcePort,  String destinationIP,  String destinationPort,  String host,  DnsMode? dnsMode,  String process,  String processPath,  String remoteDestination,  List<String> sourceGeoIP,  List<String> destinationGeoIP,  String destinationIPASN,  String sourceIPASN,  String specialRules,  String specialProxy,  String type,  String inboundName)?  $default,) {final _that = this;
 switch (_that) {
 case _Metadata() when $default != null:
-return $default(_that.uid,_that.network,_that.sourceIP,_that.sourcePort,_that.destinationIP,_that.destinationPort,_that.host,_that.dnsMode,_that.process,_that.processPath,_that.remoteDestination,_that.sourceGeoIP,_that.destinationGeoIP,_that.destinationIPASN,_that.sourceIPASN,_that.specialRules,_that.specialProxy);case _:
+return $default(_that.uid,_that.network,_that.sourceIP,_that.sourcePort,_that.destinationIP,_that.destinationPort,_that.host,_that.dnsMode,_that.process,_that.processPath,_that.remoteDestination,_that.sourceGeoIP,_that.destinationGeoIP,_that.destinationIPASN,_that.sourceIPASN,_that.specialRules,_that.specialProxy,_that.type,_that.inboundName);case _:
   return null;
 
 }
@@ -784,7 +788,7 @@ return $default(_that.uid,_that.network,_that.sourceIP,_that.sourcePort,_that.de
 @JsonSerializable()
 
 class _Metadata implements Metadata {
-  const _Metadata({this.uid = 0, this.network = '', this.sourceIP = '', this.sourcePort = '', this.destinationIP = '', this.destinationPort = '', this.host = '', this.dnsMode, this.process = '', this.processPath = '', this.remoteDestination = '', final  List<String> sourceGeoIP = const [], final  List<String> destinationGeoIP = const [], this.destinationIPASN = '', this.sourceIPASN = '', this.specialRules = '', this.specialProxy = ''}): _sourceGeoIP = sourceGeoIP,_destinationGeoIP = destinationGeoIP;
+  const _Metadata({this.uid = 0, this.network = '', this.sourceIP = '', this.sourcePort = '', this.destinationIP = '', this.destinationPort = '', this.host = '', this.dnsMode, this.process = '', this.processPath = '', this.remoteDestination = '', final  List<String> sourceGeoIP = const [], final  List<String> destinationGeoIP = const [], this.destinationIPASN = '', this.sourceIPASN = '', this.specialRules = '', this.specialProxy = '', this.type = '', this.inboundName = ''}): _sourceGeoIP = sourceGeoIP,_destinationGeoIP = destinationGeoIP;
   factory _Metadata.fromJson(Map<String, dynamic> json) => _$MetadataFromJson(json);
 
 @override@JsonKey() final  int uid;
@@ -816,6 +820,10 @@ class _Metadata implements Metadata {
 @override@JsonKey() final  String sourceIPASN;
 @override@JsonKey() final  String specialRules;
 @override@JsonKey() final  String specialProxy;
+// MeowX：入站类型（mihomo metadata.type：Tun / HTTP / HTTPS / Socks5 …）与入站名（DEFAULT-TUN / DEFAULT-MIXED），
+// 用来在连接页区分一条连接走的是 TUN 还是系统代理
+@override@JsonKey() final  String type;
+@override@JsonKey() final  String inboundName;
 
 /// Create a copy of Metadata
 /// with the given fields replaced by the non-null parameter values.
@@ -830,16 +838,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Metadata&&(identical(other.uid, uid) || other.uid == uid)&&(identical(other.network, network) || other.network == network)&&(identical(other.sourceIP, sourceIP) || other.sourceIP == sourceIP)&&(identical(other.sourcePort, sourcePort) || other.sourcePort == sourcePort)&&(identical(other.destinationIP, destinationIP) || other.destinationIP == destinationIP)&&(identical(other.destinationPort, destinationPort) || other.destinationPort == destinationPort)&&(identical(other.host, host) || other.host == host)&&(identical(other.dnsMode, dnsMode) || other.dnsMode == dnsMode)&&(identical(other.process, process) || other.process == process)&&(identical(other.processPath, processPath) || other.processPath == processPath)&&(identical(other.remoteDestination, remoteDestination) || other.remoteDestination == remoteDestination)&&const DeepCollectionEquality().equals(other._sourceGeoIP, _sourceGeoIP)&&const DeepCollectionEquality().equals(other._destinationGeoIP, _destinationGeoIP)&&(identical(other.destinationIPASN, destinationIPASN) || other.destinationIPASN == destinationIPASN)&&(identical(other.sourceIPASN, sourceIPASN) || other.sourceIPASN == sourceIPASN)&&(identical(other.specialRules, specialRules) || other.specialRules == specialRules)&&(identical(other.specialProxy, specialProxy) || other.specialProxy == specialProxy));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Metadata&&(identical(other.uid, uid) || other.uid == uid)&&(identical(other.network, network) || other.network == network)&&(identical(other.sourceIP, sourceIP) || other.sourceIP == sourceIP)&&(identical(other.sourcePort, sourcePort) || other.sourcePort == sourcePort)&&(identical(other.destinationIP, destinationIP) || other.destinationIP == destinationIP)&&(identical(other.destinationPort, destinationPort) || other.destinationPort == destinationPort)&&(identical(other.host, host) || other.host == host)&&(identical(other.dnsMode, dnsMode) || other.dnsMode == dnsMode)&&(identical(other.process, process) || other.process == process)&&(identical(other.processPath, processPath) || other.processPath == processPath)&&(identical(other.remoteDestination, remoteDestination) || other.remoteDestination == remoteDestination)&&const DeepCollectionEquality().equals(other._sourceGeoIP, _sourceGeoIP)&&const DeepCollectionEquality().equals(other._destinationGeoIP, _destinationGeoIP)&&(identical(other.destinationIPASN, destinationIPASN) || other.destinationIPASN == destinationIPASN)&&(identical(other.sourceIPASN, sourceIPASN) || other.sourceIPASN == sourceIPASN)&&(identical(other.specialRules, specialRules) || other.specialRules == specialRules)&&(identical(other.specialProxy, specialProxy) || other.specialProxy == specialProxy)&&(identical(other.type, type) || other.type == type)&&(identical(other.inboundName, inboundName) || other.inboundName == inboundName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,uid,network,sourceIP,sourcePort,destinationIP,destinationPort,host,dnsMode,process,processPath,remoteDestination,const DeepCollectionEquality().hash(_sourceGeoIP),const DeepCollectionEquality().hash(_destinationGeoIP),destinationIPASN,sourceIPASN,specialRules,specialProxy);
+int get hashCode => Object.hashAll([runtimeType,uid,network,sourceIP,sourcePort,destinationIP,destinationPort,host,dnsMode,process,processPath,remoteDestination,const DeepCollectionEquality().hash(_sourceGeoIP),const DeepCollectionEquality().hash(_destinationGeoIP),destinationIPASN,sourceIPASN,specialRules,specialProxy,type,inboundName]);
 
 @override
 String toString() {
-  return 'Metadata(uid: $uid, network: $network, sourceIP: $sourceIP, sourcePort: $sourcePort, destinationIP: $destinationIP, destinationPort: $destinationPort, host: $host, dnsMode: $dnsMode, process: $process, processPath: $processPath, remoteDestination: $remoteDestination, sourceGeoIP: $sourceGeoIP, destinationGeoIP: $destinationGeoIP, destinationIPASN: $destinationIPASN, sourceIPASN: $sourceIPASN, specialRules: $specialRules, specialProxy: $specialProxy)';
+  return 'Metadata(uid: $uid, network: $network, sourceIP: $sourceIP, sourcePort: $sourcePort, destinationIP: $destinationIP, destinationPort: $destinationPort, host: $host, dnsMode: $dnsMode, process: $process, processPath: $processPath, remoteDestination: $remoteDestination, sourceGeoIP: $sourceGeoIP, destinationGeoIP: $destinationGeoIP, destinationIPASN: $destinationIPASN, sourceIPASN: $sourceIPASN, specialRules: $specialRules, specialProxy: $specialProxy, type: $type, inboundName: $inboundName)';
 }
 
 
@@ -850,7 +858,7 @@ abstract mixin class _$MetadataCopyWith<$Res> implements $MetadataCopyWith<$Res>
   factory _$MetadataCopyWith(_Metadata value, $Res Function(_Metadata) _then) = __$MetadataCopyWithImpl;
 @override @useResult
 $Res call({
- int uid, String network, String sourceIP, String sourcePort, String destinationIP, String destinationPort, String host, DnsMode? dnsMode, String process, String processPath, String remoteDestination, List<String> sourceGeoIP, List<String> destinationGeoIP, String destinationIPASN, String sourceIPASN, String specialRules, String specialProxy
+ int uid, String network, String sourceIP, String sourcePort, String destinationIP, String destinationPort, String host, DnsMode? dnsMode, String process, String processPath, String remoteDestination, List<String> sourceGeoIP, List<String> destinationGeoIP, String destinationIPASN, String sourceIPASN, String specialRules, String specialProxy, String type, String inboundName
 });
 
 
@@ -867,7 +875,7 @@ class __$MetadataCopyWithImpl<$Res>
 
 /// Create a copy of Metadata
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? uid = null,Object? network = null,Object? sourceIP = null,Object? sourcePort = null,Object? destinationIP = null,Object? destinationPort = null,Object? host = null,Object? dnsMode = freezed,Object? process = null,Object? processPath = null,Object? remoteDestination = null,Object? sourceGeoIP = null,Object? destinationGeoIP = null,Object? destinationIPASN = null,Object? sourceIPASN = null,Object? specialRules = null,Object? specialProxy = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? uid = null,Object? network = null,Object? sourceIP = null,Object? sourcePort = null,Object? destinationIP = null,Object? destinationPort = null,Object? host = null,Object? dnsMode = freezed,Object? process = null,Object? processPath = null,Object? remoteDestination = null,Object? sourceGeoIP = null,Object? destinationGeoIP = null,Object? destinationIPASN = null,Object? sourceIPASN = null,Object? specialRules = null,Object? specialProxy = null,Object? type = null,Object? inboundName = null,}) {
   return _then(_Metadata(
 uid: null == uid ? _self.uid : uid // ignore: cast_nullable_to_non_nullable
 as int,network: null == network ? _self.network : network // ignore: cast_nullable_to_non_nullable
@@ -886,6 +894,8 @@ as List<String>,destinationIPASN: null == destinationIPASN ? _self.destinationIP
 as String,sourceIPASN: null == sourceIPASN ? _self.sourceIPASN : sourceIPASN // ignore: cast_nullable_to_non_nullable
 as String,specialRules: null == specialRules ? _self.specialRules : specialRules // ignore: cast_nullable_to_non_nullable
 as String,specialProxy: null == specialProxy ? _self.specialProxy : specialProxy // ignore: cast_nullable_to_non_nullable
+as String,type: null == type ? _self.type : type // ignore: cast_nullable_to_non_nullable
+as String,inboundName: null == inboundName ? _self.inboundName : inboundName // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

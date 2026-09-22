@@ -59,6 +59,10 @@ abstract class Metadata with _$Metadata {
     @Default('') String sourceIPASN,
     @Default('') String specialRules,
     @Default('') String specialProxy,
+    // MeowX：入站类型（mihomo metadata.type：Tun / HTTP / HTTPS / Socks5 …）与入站名（DEFAULT-TUN / DEFAULT-MIXED），
+    // 用来在连接页区分一条连接走的是 TUN 还是系统代理
+    @Default('') String type,
+    @Default('') String inboundName,
   }) = _Metadata;
 
   factory Metadata.fromJson(Map<String, Object?> json) =>
