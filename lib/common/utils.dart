@@ -783,7 +783,13 @@ class Utils {
       return 'assets/images/icon_black.png';
     }
 
-    final suffix = system.isWindows ? 'ico' : 'png';
+    // Windows 托盘不分状态、不分深浅色，始终用 App 图标本身（与 exe / 任务栏图标同一张画）；
+    // 单色剪影是 macOS 菜单栏的惯例，放在 Windows 托盘里反而像另一个 App
+    if (system.isWindows) {
+      return 'assets/images/icon_light.ico';
+    }
+
+    const suffix = 'png';
 
     final darkPath = !isStart
         ? 'assets/images/icon_light.$suffix'
