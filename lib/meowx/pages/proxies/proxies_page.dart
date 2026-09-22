@@ -1224,6 +1224,7 @@ class _NodeCell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mm = context.mm;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final nested = isGroupType(proxy.type);
     final builtin = builtinSubtitle(proxy.name);
     final style = protoStyle(proxy.type, mm);
@@ -1254,13 +1255,14 @@ class _NodeCell extends ConsumerWidget {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          // 选中：淡强调色底 + 描边。不加发光——格子底是半透明的，阴影会透上来把整格染蓝、盖住延迟
+          // 选中：淡强调色底 + 描边。不加发光——格子底是半透明的，阴影会透上来把整格染蓝、盖住延迟。
+          // 深色模式下组卡是 #1C1C1E，叠 5% 白只到 #272729，格子和卡片几乎分不出来——深色用 10% 底 + 14% 描边
           color: selected
-              ? mm.accent.withValues(alpha: 0.10)
-              : mm.t1.withValues(alpha: 0.05),
+              ? mm.accent.withValues(alpha: dark ? 0.16 : 0.10)
+              : mm.t1.withValues(alpha: dark ? 0.10 : 0.05),
           borderRadius: BorderRadius.circular(13),
           border: Border.all(
-            color: selected ? mm.accent : mm.t1.withValues(alpha: 0.1),
+            color: selected ? mm.accent : mm.t1.withValues(alpha: dark ? 0.14 : 0.1),
             width: selected ? 1.5 : 1,
           ),
         ),
