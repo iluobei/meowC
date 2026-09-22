@@ -63,7 +63,7 @@ class RoundGlassButton extends StatelessWidget {
     final mm = context.mm;
     final btn = Material(
       color: mm.elev,
-      shape: const CircleBorder(),
+      shape: CircleBorder(side: BorderSide(color: mm.cardEdge)),
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: busy ? null : onTap,

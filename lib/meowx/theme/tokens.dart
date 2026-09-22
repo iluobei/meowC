@@ -19,6 +19,7 @@ class MeowTokens extends ThemeExtension<MeowTokens> {
     required this.teal,
     required this.glassTint,
     required this.glassEdge,
+    required this.cardEdge,
   });
 
   /// 页面底 / 卡片底 / 文本三级
@@ -29,6 +30,9 @@ class MeowTokens extends ThemeExtension<MeowTokens> {
 
   /// 玻璃底与描边（搜索框等）
   final Color glassTint, glassEdge;
+
+  /// 卡片 1px 描边：白卡放在浅灰底上只差几个灰阶，靠描边把卡片和页面底分开（对齐 Surfing 的卡片观感）
+  final Color cardEdge;
 
   static const light = MeowTokens(
     bg: Color(0xFFF2F2F7),
@@ -46,6 +50,7 @@ class MeowTokens extends ThemeExtension<MeowTokens> {
     teal: Color(0xFF30B0C7),
     glassTint: Color(0xFFFFFFFF),
     glassEdge: Color(0xFF000000),
+    cardEdge: Color(0x17000000),
   );
 
   static const dark = MeowTokens(
@@ -64,6 +69,7 @@ class MeowTokens extends ThemeExtension<MeowTokens> {
     teal: Color(0xFF40C8E0),
     glassTint: Color(0xFF1C1C1E),
     glassEdge: Color(0xFFFFFFFF),
+    cardEdge: Color(0x1FFFFFFF),
   );
 
   @override
@@ -89,6 +95,7 @@ class MeowTokens extends ThemeExtension<MeowTokens> {
       teal: c(teal, other.teal),
       glassTint: c(glassTint, other.glassTint),
       glassEdge: c(glassEdge, other.glassEdge),
+      cardEdge: c(cardEdge, other.cardEdge),
     );
   }
 }

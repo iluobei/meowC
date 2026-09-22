@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
@@ -226,7 +228,7 @@ class _MeowRootState extends ConsumerState<MeowRoot> {
         extendBody: !wide,
         body: SafeArea(bottom: wide, child: body),   // 状态栏下留白
         // liquid_glass_widgets：Impeller（Android 10+）上高亮胶囊是真折射 + 高光，按住放大、拖动带果冻形变；
-        // Skia（Android 8–9、Windows 3.44）自动降级为模糊 + 双高光，仍可拖动。底轨用 standard 省 GPU。
+        // Skia（Android 8–9、Windows 3.44）自动降级为模糊 + 双高光，仍可拖动。底轨也用 premium：边缘亮线 + 暗带只有它画得出来。
         bottomNavigationBar: wide
             ? null
             : lg.GlassTabBar.bottom(
@@ -236,11 +238,12 @@ class _MeowRootState extends ConsumerState<MeowRoot> {
                   _select(MeowTab.values[i]);
                 },
                 quality: lg.GlassQuality.premium,
-                backgroundQuality: lg.GlassQuality.standard,
+                backgroundQuality: lg.GlassQuality.premium,
+                settings: _barGlass(context.isDarkMode),
                 selectedIconColor: mm.accent,
                 selectedLabelColor: mm.accent,
-                unselectedIconColor: mm.t1,
-                unselectedLabelColor: mm.t1,
+                unselectedIconColor: mm.t1.withValues(alpha: 0.78),
+                unselectedLabelColor: mm.t1.withValues(alpha: 0.78),
                 iconSize: 23,
                 tabs: [for (final t in MeowTab.values) lg.GlassTab(icon: Icon(t.icon), label: t.label)],
               ),
@@ -248,6 +251,26 @@ class _MeowRootState extends ConsumerState<MeowRoot> {
     );
   }
 }
+
+/// 底栏胶囊的玻璃：对齐 Surfing 底栏（Kyant backdrop 的 LiquidBottomTabs）——
+/// 95% 不透明的奶白 / 深灰底 + 边缘亮线与内侧暗带 + 24dp 柔和投影，内容滚到下面时不再透出一片灰；选中块仍是 10% 灰药丸。
+/// 暗带（edgeAbsorption）只在 Impeller 的 premium 着色器上好看；Skia（Android 8–9、Windows 窄窗口）降级成 standard 时
+/// 它会变成一圈很重的灰色斜面，所以只在支持着色器滤镜时才加。
+lg.LiquidGlassSettings _barGlass(bool dark) => lg.LiquidGlassSettings(
+      glassColor: dark ? const Color(0xF2242327) : const Color(0xF2FAFAFA),
+      bodyMode: lg.GlassBodyMode.clear,
+      thickness: 30,
+      blur: 20,
+      chromaticAberration: 0,
+      lightIntensity: 1.0,
+      ambientStrength: 1,
+      ambientRim: 0.6,
+      edgeAbsorption: ui.ImageFilter.isShaderFilterSupported ? 0.18 : 0,
+      refractiveIndex: 1.59,
+      saturation: 1.5,
+      lightAngle: 0.75 * math.pi,
+      shadow: const [BoxShadow(color: Color(0x1F000000), blurRadius: 24, offset: Offset(0, 4))],
+    );
 
 /// 连接数角标（宽屏 IconRail 用），由连接页 / 首页的轮询写入。
 final connectionCountProvider = StateProvider<int>((ref) => 0);

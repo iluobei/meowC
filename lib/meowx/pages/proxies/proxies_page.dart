@@ -80,6 +80,12 @@ const _cardRadius = 26.0;
 const _cardPadding = 14.0;
 const _gridSpacing = 9.0;
 
+/// 组卡被拆成 头 / 网格 / 收尾 三段 sliver，描边也分三段拼：头开底边、中段只有左右、收尾开顶边
+BorderSide _edge(MeowTokens mm) => BorderSide(color: mm.cardEdge);
+Border _topEdges(MeowTokens mm) => Border(top: _edge(mm), left: _edge(mm), right: _edge(mm));
+Border _sideEdges(MeowTokens mm) => Border(left: _edge(mm), right: _edge(mm));
+Border _bottomEdges(MeowTokens mm) => Border(left: _edge(mm), right: _edge(mm), bottom: _edge(mm));
+
 /// 节点格高度：两行（名 + 副标题 / 延迟胶囊）。网格是懒加载、定高的（mainAxisExtent），不能让格子自己撑开，
 /// 所以按主题字样和文字缩放量出来——之前写死 58：文字继承 M3 bodyMedium 的行高 1.43，1.0 倍时内容就比格子高 9px
 /// （被底部 padding 盖住），字号调大一档（≥1.05）第二行就越出格子底边。
@@ -161,7 +167,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
         SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           sliver: DecoratedSliver(
-            decoration: BoxDecoration(color: mm.elev),
+            decoration: BoxDecoration(color: mm.elev, border: _sideEdges(mm)),
             sliver: SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: _cardPadding),
               sliver: _NodeSliverGrid(group: g, columns: columns),
@@ -175,6 +181,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
               height: _cardPadding,
               decoration: BoxDecoration(
                 color: mm.elev,
+                border: _bottomEdges(mm),
                 borderRadius: const BorderRadius.vertical(
                   bottom: Radius.circular(_cardRadius),
                 ),
@@ -496,7 +503,7 @@ class _GroupTabsState extends ConsumerState<_GroupTabs> {
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     sliver: DecoratedSliver(
-                      decoration: BoxDecoration(color: mm.elev),
+                      decoration: BoxDecoration(color: mm.elev, border: _sideEdges(mm)),
                       sliver: SliverPadding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: _cardPadding,
@@ -515,6 +522,7 @@ class _GroupTabsState extends ConsumerState<_GroupTabs> {
                         height: _cardPadding,
                         decoration: BoxDecoration(
                           color: mm.elev,
+                          border: _bottomEdges(mm),
                           borderRadius: const BorderRadius.vertical(
                             bottom: Radius.circular(_cardRadius),
                           ),
@@ -557,7 +565,7 @@ class _GroupChip extends StatelessWidget {
           color: selected ? mm.accent.withValues(alpha: 0.10) : mm.elev,
           borderRadius: BorderRadius.circular(19),
           border: Border.all(
-            color: selected ? mm.accent : Colors.transparent,
+            color: selected ? mm.accent : mm.cardEdge,
             width: 1.5,
           ),
         ),
@@ -600,6 +608,7 @@ class _TabGroupHead extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(_cardPadding, 8, 6, 8),
       decoration: BoxDecoration(
         color: mm.elev,
+        border: _topEdges(mm),
         borderRadius: const BorderRadius.vertical(
           top: Radius.circular(_cardRadius),
         ),
@@ -899,6 +908,7 @@ class _GroupHead extends ConsumerWidget {
         ),
         decoration: BoxDecoration(
           color: mm.elev,
+          border: expanded ? _topEdges(mm) : Border.all(color: mm.cardEdge),
           borderRadius: expanded
               ? const BorderRadius.vertical(top: Radius.circular(_cardRadius))
               : BorderRadius.circular(_cardRadius),
@@ -984,7 +994,7 @@ class _GroupRow extends ConsumerWidget {
           borderRadius: BorderRadius.circular(18),
           side: selected
               ? BorderSide(color: mm.accent.withValues(alpha: 0.55))
-              : BorderSide.none,
+              : _edge(mm),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(

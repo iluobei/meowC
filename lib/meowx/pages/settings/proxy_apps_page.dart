@@ -120,7 +120,10 @@ class _ProxyAppsPageState extends ConsumerState<ProxyAppsPage> with WidgetsBindi
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
             child: Material(
               color: mm.elev,
-              borderRadius: BorderRadius.circular(16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: mm.cardEdge),
+              ),
               clipBehavior: Clip.antiAlias,
               child: SwitchListTile.adaptive(
                 title: Text('只代理勾选的应用', style: TextStyle(fontSize: MeowFont.body, color: mm.t1)),
@@ -149,7 +152,8 @@ class _ProxyAppsPageState extends ConsumerState<ProxyAppsPage> with WidgetsBindi
                         filled: true,
                         fillColor: mm.elev,
                         contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide.none),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: mm.cardEdge)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: mm.cardEdge)),
                       ),
                     ),
                   ),
@@ -238,7 +242,7 @@ class _ProxyAppsPageState extends ConsumerState<ProxyAppsPage> with WidgetsBindi
               color: on ? mm.accent.withValues(alpha: 0.10) : mm.elev,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: on ? BorderSide(color: mm.accent.withValues(alpha: 0.55)) : BorderSide.none,
+                side: BorderSide(color: on ? mm.accent.withValues(alpha: 0.55) : mm.cardEdge),
               ),
               clipBehavior: Clip.antiAlias,
               child: InkWell(

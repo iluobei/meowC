@@ -133,6 +133,7 @@ class IconRail extends StatelessWidget {
           decoration: BoxDecoration(
             color: mm.elev,
             borderRadius: BorderRadius.circular(28),
+            border: Border.all(color: mm.cardEdge),
           ),
           child: scroll
               // 只有几个瓦片，IntrinsicHeight 开销可忽略；它让 Spacer 在滚动视图里有界
