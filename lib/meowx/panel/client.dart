@@ -19,8 +19,7 @@ class PanelClient {
       _dio = dio ?? _directDio(),
       _cache = cache ?? const PrefsCertCache();
 
-  /// 发给主控的 User-Agent。Telegram 登录时机器人会把「来源 IP + 浏览器」摆给用户核对，
-  /// 得让用户认得出这是 MeowX 客户端；启动后由 MeowRoot 补上版本号。
+  /// 发给主控的 User-Agent：主控日志与安全事件里认得出是 MeowX 客户端；启动后由 MeowRoot 补上版本号。
   static String userAgent = 'MeowX (${Platform.isAndroid ? 'Android' : Platform.isWindows ? 'Windows' : Platform.operatingSystem})';
 
   /// `https://host[:port]`，无尾斜杠
@@ -172,32 +171,6 @@ class PanelClient {
 
   /// 扫码登录：一次性码，无 token
   Future<LoginResult> loginQr(String code) async => _loginResult(await rpc('/login/qr', payload: {'code': code}));
-
-  // ---- Telegram 登录：客户端申请 nonce → 用户在 Telegram 里点机器人确认 → 客户端轮询拿会话 ----
-
-  /// 主控开了机器人才有这条路；没开就不显示按钮。
-  Future<bool> telegramLoginAvailable() async {
-    final r = await rpc('/login/telegram/available', method: 'GET');
-    return r['enabled'] == true;
-  }
-
-  Future<TelegramLoginStart> telegramLoginStart() async {
-    final r = await rpc('/login/telegram/start');
-    return TelegramLoginStart.tryParse(r) ?? (throw PanelException(_error(r) ?? 'Telegram 登录不可用'));
-  }
-
-  /// 推送式：按面板用户名让主控把确认消息直接推到该账号绑定的 Telegram。账号不存在 / 没绑 TG 主控也照样返回
-  /// （防枚举），只是没人会确认，3 分钟后过期；同账号已有待确认请求时复用同一个 nonce / 数字。
-  Future<TelegramLoginPush> telegramLoginPush(String username) async {
-    final r = await rpc('/login/telegram/push', payload: {'username': username});
-    return TelegramLoginPush.tryParse(r) ?? (throw PanelException(_error(r) ?? 'Telegram 登录不可用'));
-  }
-
-  Future<TelegramLoginPoll> telegramLoginPoll(String nonce) async {
-    // 键名用 login_nonce：rpc() 的内层 JSON 自带防重放字段 nonce，会把 payload 里同名的键盖掉（主控两个键都认）
-    final r = await rpc('/login/telegram/poll', payload: {'login_nonce': nonce});
-    return TelegramLoginPoll.parse(r) ?? (throw PanelException(_error(r) ?? '登录失败'));
-  }
 
   LoginResult _loginResult(Map<String, dynamic> r) {
     if (r['requires_2fa'] == true) {

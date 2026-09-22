@@ -47,7 +47,7 @@ class _MeowRootState extends ConsumerState<MeowRoot> {
   @override
   void initState() {
     super.initState();
-    // 主控 RPC 的 User-Agent 带上版本：Telegram 登录时机器人把它摆给用户核对「谁在请求登录」
+    // 主控 RPC 的 User-Agent 带上版本，主控日志与安全事件里认得出是哪个版本的 MeowX
     try {
       PanelClient.userAgent = 'MeowX/${globalState.packageInfo.version} (${system.isAndroid ? 'Android' : 'Windows'})';
     } catch (e) {
