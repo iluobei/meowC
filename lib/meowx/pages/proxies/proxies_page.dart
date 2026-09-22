@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:bett_box/common/common.dart';
 import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
 import 'package:bett_box/providers/providers.dart';
@@ -1017,6 +1020,61 @@ class _GroupDetail extends StatelessWidget {
   }
 }
 
+/// url-test / fallback 组正在切换的目标：组名 → 节点名（乐观高亮 + 格子转圈，核心回报后清掉）。
+final _pendingPickProvider = StateProvider<Map<String, String>>((ref) => const {});
+
+/// 点选节点。
+/// - select 组：本地高亮即时生效，核心切换沿用 Bettbox 的 600 ms 防抖（合并连点）。
+/// - url-test / fallback 组：点节点 = 固定（SelectAble.Set），点已固定的 = 取消（ForceSet("")）。高亮只认核心回报的 now，
+///   所以不走防抖、先乐观高亮；另外 mihomo 的 Fallback.Set 遇到失效节点会持核心全局锁同步测速最多 5 秒，
+///   期间拉代理组 / 连接列表全被卡住——已知失效的节点先在锁外单独测一次，测不通就不切。
+///   切完以核心结果为准：没切过去（节点不可用被 mihomo 清掉）就撤掉图钉并提示，不留一个假的固定状态。
+Future<void> _pickNode(WidgetRef ref, Group group, Proxy proxy) async {
+  final c = globalState.appController;
+  if (!group.type.isComputedSelected) {
+    c.updateCurrentSelectedMap(group.name, proxy.name);
+    c.changeProxyDebounce(group.name, proxy.name);
+    return;
+  }
+  final pinned = ref.read(getProxyNameProvider(group.name)) ?? '';
+  final next = proxy.name == pinned ? '' : proxy.name;
+  final pending = ref.read(_pendingPickProvider.notifier);
+  pending.update((m) => {...m, group.name: next});
+  c.updateCurrentSelectedMap(group.name, next);
+
+  Future<void> reject() async {
+    c.updateCurrentSelectedMap(group.name, '');
+    await c.changeProxy(groupName: group.name, proxyName: '');
+    await c.updateGroups();   // 立刻拿到自动选中的节点，高亮别先回到旧节点再跳
+    globalState.showNotifier('$next 当前不可用，已恢复自动选择');
+  }
+
+  try {
+    if (next.isNotEmpty) {
+      final known = ref.read(getDelayProvider(proxyName: next, testUrl: group.testUrl));
+      final tcping = ref.read(meowSettingProvider).latencyMode == LatencyMode.tcping;   // TCPing 不更新 mihomo 的存活状态，测了也没用
+      if (known != null && known < 0 && !tcping) {
+        await proxyDelayTest(proxy, group.testUrl);
+        final after = ref.read(getDelayProvider(proxyName: next, testUrl: group.testUrl));
+        if (after == null || after <= 0) {
+          await reject();
+          return;
+        }
+      }
+    }
+    await c.changeProxy(groupName: group.name, proxyName: next);
+    await c.updateGroups();
+    if (next.isNotEmpty) {
+      final now = ref.read(groupsProvider).getGroup(group.name)?.now;
+      if (now != null && now.isNotEmpty && now != next) await reject();
+    }
+  } catch (e) {
+    commonPrint.log('pick node failed: $e');
+  } finally {
+    pending.update((m) => m[group.name] == next ? ({...m}..remove(group.name)) : m);
+  }
+}
+
 /// 懒加载节点网格：只构建可见格子；每格自带 RepaintBoundary。
 class _NodeSliverGrid extends ConsumerWidget {
   const _NodeSliverGrid({required this.group, required this.columns});
@@ -1029,11 +1087,12 @@ class _NodeSliverGrid extends ConsumerWidget {
         ref.watch(getSelectedProxyNameProvider(group.name)) ?? '';
     final metas = ref.watch(proxyMetaProvider);
     final mode = ref.watch(meowSettingProvider.select((s) => s.latencyMode));
-    // select 组点了就切；url-test / fallback 组点了是「固定」到该节点（mihomo 的 SelectAble.Set），
-    // 再点一次已固定的节点 = 取消固定、回到自动选择（ForceSet("")）。对齐 Bettbox 原版的语义。
+    // select 组点了就切；url-test / fallback 组点了是「固定」到该节点，再点一次取消（见 _pickNode）
     final computed = group.type.isComputedSelected;
     final selectable = computed || group.type == GroupType.Selector;
     final pinned = computed ? (ref.watch(getProxyNameProvider(group.name)) ?? '') : '';
+    final pendingPick = computed ? ref.watch(_pendingPickProvider.select((m) => m[group.name])) : null;
+    final shownSelected = (pendingPick != null && pendingPick.isNotEmpty) ? pendingPick : selectedName;
     return SliverGrid(
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: columns,
@@ -1048,17 +1107,11 @@ class _NodeSliverGrid extends ConsumerWidget {
           proxy: p,
           group: group,
           meta: metas[p.name],
-          selected: p.name == selectedName,
+          selected: p.name == shownSelected,
           pinned: computed && p.name == pinned,
+          busy: pendingPick != null && pendingPick.isNotEmpty && pendingPick == p.name,
           mode: mode,
-          onTap: selectable
-              ? () {
-                  final next = computed && p.name == pinned ? '' : p.name;
-                  final c = globalState.appController;
-                  c.updateCurrentSelectedMap(group.name, next);
-                  c.changeProxyDebounce(group.name, next);
-                }
-              : null,
+          onTap: selectable ? () => unawaited(_pickNode(ref, group, p)) : null,
         );
       }, childCount: group.all.length),
     );
@@ -1074,6 +1127,7 @@ class _NodeCell extends ConsumerWidget {
     required this.meta,
     required this.selected,
     this.pinned = false,
+    this.busy = false,
     required this.mode,
     required this.onTap,
   });
@@ -1083,8 +1137,11 @@ class _NodeCell extends ConsumerWidget {
   final ProxyMeta? meta;
   final bool selected;
 
-  /// url-test / fallback 组里被手动固定的节点（名字旁画一把锁）。
+  /// url-test / fallback 组里被手动固定的节点（名字旁画图钉）。
   final bool pinned;
+
+  /// 正在切到这个节点（核心还没回报）：延迟胶囊的位置转圈。
+  final bool busy;
   final LatencyMode mode;
   final VoidCallback? onTap;
 
@@ -1187,7 +1244,16 @@ class _NodeCell extends ConsumerWidget {
                     style: MeowFont.mono(size: MeowFont.caption2, color: mm.t3),
                   ),
                 ),
-                if (testable)
+                if (busy)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    child: SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(strokeWidth: 1.6, color: mm.accent),
+                    ),
+                  )
+                else if (testable)
                   GestureDetector(
                     onTap: () => proxyDelayTest(proxy, group.testUrl),
                     child: LatencyChip(delay, mode: mode),
