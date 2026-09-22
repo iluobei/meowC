@@ -278,7 +278,8 @@ class _AccountCard extends ConsumerWidget {
 }
 
 /// 账号密码登录（含二步验证）；主控开了 Telegram 机器人时多一条「用 Telegram 登录」：
-/// start 拿 nonce + 深链 → 打开 Telegram → 每 2 秒 poll，机器人侧确认后即登录（开了两步验证再走验证码）。
+/// 用户名留空 = 深链式（start 拿 nonce + 深链 → 打开 Telegram 在机器人里确认）；填了用户名 = 推送式（push 让主控把
+/// 确认消息直接推到该账号绑定的 Telegram，这里显示要点的两位数）。之后都是每 2 秒 poll，确认后即登录（开了两步验证再走验证码）。
 Future<void> showLoginSheet(
   BuildContext context,
   WidgetRef ref, {
@@ -296,7 +297,8 @@ Future<void> showLoginSheet(
   int tgCheckSeq = 0;
   Timer? tgCheckDebounce;
   String? tgNonce;
-  String? tgLink;
+  String? tgLink;    // 深链式：t.me 链接
+  String? tgMatch;   // 推送式：要在 Telegram 消息里点的两位数
   int tgRemaining = 0;
   bool tgExpired = false;
   bool tgPolling = false;
@@ -311,6 +313,7 @@ Future<void> showLoginSheet(
     tgPoll = null;
     tgNonce = null;
     tgLink = null;
+    tgMatch = null;
     tgRemaining = 0;
     tgPolling = false;
   }
@@ -339,6 +342,7 @@ Future<void> showLoginSheet(
     tgCheckDebounce = Timer(const Duration(milliseconds: 600), checkTelegram);
   });
   unawaited(checkTelegram());
+  user.addListener(() => rebuild?.call(() {}));   // 有没有填用户名决定 Telegram 按钮走推送还是深链
 
   await showModalBottomSheet<void>(
     context: context,
@@ -422,11 +426,22 @@ Future<void> showLoginSheet(
           setState(() => busy = true);
           try {
             final actions = ref.read(accountActionsProvider);
-            final s = await actions.telegramLoginStart(actions.clientFor(host.text));
-            stopTelegram();
-            tgNonce = s.nonce;
-            tgLink = s.deepLink;
-            tgRemaining = s.expiresIn;
+            final client = actions.clientFor(host.text);
+            final username = user.text.trim();
+            if (username.isNotEmpty) {
+              // 推送式：主控把确认消息直接推到该账号绑定的 Telegram，这里只要显示要点的数字
+              final s = await actions.telegramLoginPush(client, username);
+              stopTelegram();
+              tgNonce = s.nonce;
+              tgMatch = s.matchCode;
+              tgRemaining = s.expiresIn;
+            } else {
+              final s = await actions.telegramLoginStart(client);
+              stopTelegram();
+              tgNonce = s.nonce;
+              tgLink = s.deepLink;
+              tgRemaining = s.expiresIn;
+            }
             tgExpired = false;
             tgTick = Timer.periodic(const Duration(seconds: 1), (_) {
               if (tgRemaining <= 0) return;
@@ -439,7 +454,7 @@ Future<void> showLoginSheet(
             });
             tgPoll = Timer.periodic(const Duration(seconds: 2), (_) => pollTelegram());
             if (ctx.mounted) setState(() {});
-            await openTelegram();
+            if (tgLink != null) await openTelegram();
           } catch (e) {
             onError(e);
             if (ctx.mounted) Navigator.of(ctx).pop();
@@ -448,7 +463,10 @@ Future<void> showLoginSheet(
           }
         }
 
-        final waitingTelegram = tgNonce != null;
+        // 过期后 nonce 已清掉，但要停在 Telegram 页显示「已过期 / 重新发起」，直到用户点取消
+        final waitingTelegram = tgNonce != null || tgExpired;
+        final pushMode = tgMatch != null;
+        final hasUsername = user.text.trim().isNotEmpty;
         final remaining = '${(tgRemaining ~/ 60).toString().padLeft(2, '0')}:${(tgRemaining % 60).toString().padLeft(2, '0')}';
 
         // 键盘高度留在外层：横屏 + 键盘时剩余高度放不下整张表单，内层滚动才能滑到密码框和登录钮
@@ -498,9 +516,17 @@ Future<void> showLoginSheet(
                   Text(
                     tgExpired
                         ? '登录请求已过期（3 分钟内未确认），请重新发起'
-                        : '已在 Telegram 打开机器人，请在对话里核对来源信息后点「确认登录」；确认后这里会自动登录。',
+                        : pushMode
+                            ? '主控已把「登录确认」推到你绑定的 Telegram，请核对来源信息后，在那条消息的三个数字里点击下面这个：'
+                            : '已在 Telegram 打开机器人，请在对话里核对来源信息后点「确认登录」；确认后这里会自动登录。',
                     style: TextStyle(fontSize: MeowFont.subheadline, color: mm.t2),
                   ),
+                  if (pushMode && !tgExpired) ...[
+                    const SizedBox(height: 12),
+                    Center(
+                      child: Text(tgMatch!, style: MeowFont.mono(size: 44, weight: FontWeight.bold, color: mm.t1)),
+                    ),
+                  ],
                   if (!tgExpired) ...[
                     const SizedBox(height: 8),
                     Row(
@@ -527,13 +553,16 @@ Future<void> showLoginSheet(
                           child: const Text('取消'),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: busy ? null : (tgExpired ? startTelegram : openTelegram),
-                          child: Text(tgExpired ? '重新发起' : '再次打开 Telegram'),
+                      // 推送式没有深链可再打开；过期后两种模式都给「重新发起」
+                      if (tgExpired || !pushMode) ...[
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: busy ? null : (tgExpired ? startTelegram : openTelegram),
+                            child: Text(tgExpired ? '重新发起' : '再次打开 Telegram'),
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ] else ...[
@@ -572,12 +601,14 @@ Future<void> showLoginSheet(
                       child: OutlinedButton.icon(
                         onPressed: busy ? null : startTelegram,
                         icon: const Icon(Icons.send_rounded, size: 18),
-                        label: const Text('用 Telegram 登录'),
+                        label: Text(hasUsername ? '推送确认到 Telegram' : '用 Telegram 登录'),
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '需要先在主控网页绑定 Telegram；开了两步验证的账号确认后仍要输验证码',
+                      hasUsername
+                          ? '主控会把确认消息直接推到该账号绑定的 Telegram，在消息里点和这里显示一致的数字即可；开了两步验证的账号确认后仍要输验证码'
+                          : '需要先在主控网页绑定 Telegram；不填用户名则打开 Telegram 机器人确认；开了两步验证的账号确认后仍要输验证码',
                       style: TextStyle(fontSize: MeowFont.caption2, color: mm.t3),
                     ),
                   ],

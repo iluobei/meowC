@@ -95,6 +95,8 @@ class AccountActions {
 
   Future<TelegramLoginStart> telegramLoginStart(PanelClient client) => client.telegramLoginStart();
 
+  Future<TelegramLoginPush> telegramLoginPush(PanelClient client, String username) => client.telegramLoginPush(username);
+
   /// 轮询一次；机器人侧确认后与密码登录一样入库，成功顺带拉订阅（同 loginWithCode）。
   Future<TelegramLoginPoll> telegramLoginPoll(PanelClient client, String nonce) async {
     final r = await client.telegramLoginPoll(nonce);

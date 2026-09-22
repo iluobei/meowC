@@ -108,6 +108,27 @@ class TelegramLoginStart {
   }
 }
 
+/// Telegram 推送式登录：`POST /login/telegram/push {username}` 的返回。主控把「登录确认」消息推到该账号绑定的
+/// Telegram，消息里三个两位数按钮，点中 [matchCode] 那个才算确认（点错整条作废）。
+class TelegramLoginPush {
+  const TelegramLoginPush({required this.nonce, required this.matchCode, required this.expiresIn});
+  final String nonce, matchCode;
+  final int expiresIn;
+
+  static TelegramLoginPush? tryParse(Map<String, dynamic> json) {
+    final nonce = json['nonce']?.toString() ?? '';
+    final match = json['match_code']?.toString() ?? '';
+    if (nonce.isEmpty || match.isEmpty) return null;
+    final expires = switch (json['expires_in']) {
+      int v => v,
+      num v => v.toInt(),
+      String v => int.tryParse(v) ?? 180,
+      _ => 180,
+    };
+    return TelegramLoginPush(nonce: nonce, matchCode: match, expiresIn: expires);
+  }
+}
+
 /// Telegram 登录：`POST /login/telegram/poll` 的三种结果。
 sealed class TelegramLoginPoll {
   const TelegramLoginPoll();

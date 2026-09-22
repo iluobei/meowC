@@ -110,4 +110,18 @@ void main() {
     // 认不出的响应 → null，由调用方按 error 抛
     expect(TelegramLoginPoll.parse({'error': 'invalid request'}), isNull);
   });
+
+  group('TelegramLoginPush.tryParse', () {
+    test('正常', () {
+      final p = TelegramLoginPush.tryParse({'nonce': 'n', 'match_code': '42', 'expires_in': 180});
+      expect(p, isNotNull);
+      expect(p!.nonce, 'n');
+      expect(p.matchCode, '42');
+      expect(p.expiresIn, 180);
+    });
+    test('缺 nonce / 数字（未启用、限流时的 {error}）→ null', () {
+      expect(TelegramLoginPush.tryParse({'error': '未启用 Telegram 机器人'}), isNull);
+      expect(TelegramLoginPush.tryParse({'nonce': 'n'}), isNull);
+    });
+  });
 }

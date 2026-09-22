@@ -186,6 +186,13 @@ class PanelClient {
     return TelegramLoginStart.tryParse(r) ?? (throw PanelException(_error(r) ?? 'Telegram 登录不可用'));
   }
 
+  /// 推送式：按面板用户名让主控把确认消息直接推到该账号绑定的 Telegram。账号不存在 / 没绑 TG 主控也照样返回
+  /// （防枚举），只是没人会确认，3 分钟后过期；同账号已有待确认请求时复用同一个 nonce / 数字。
+  Future<TelegramLoginPush> telegramLoginPush(String username) async {
+    final r = await rpc('/login/telegram/push', payload: {'username': username});
+    return TelegramLoginPush.tryParse(r) ?? (throw PanelException(_error(r) ?? 'Telegram 登录不可用'));
+  }
+
   Future<TelegramLoginPoll> telegramLoginPoll(String nonce) async {
     final r = await rpc('/login/telegram/poll', payload: {'nonce': nonce});
     return TelegramLoginPoll.parse(r) ?? (throw PanelException(_error(r) ?? '登录失败'));
