@@ -1,4 +1,5 @@
 import 'package:bett_box/common/common.dart';
+import 'package:bett_box/enum/enum.dart';
 import 'package:bett_box/models/models.dart';
 import 'package:bett_box/providers/providers.dart';
 import 'package:bett_box/state.dart';
@@ -134,8 +135,12 @@ class SettingsPage extends ConsumerWidget {
                 icon: Icons.apps_rounded,
                 color: mm.accent,
                 title: '代理应用',
-                subtitle: '只让勾选的应用走代理',
-                trailing: _chevron(mm, accessControl.enable ? '${accessControl.acceptList.length}' : '关'),
+                subtitle: !accessControl.enable
+                    ? '全部应用都走代理'
+                    : accessControl.mode == AccessControlMode.acceptSelected
+                        ? '白名单：仅勾选的应用走代理'
+                        : '黑名单：仅勾选的应用不走代理',
+                trailing: _chevron(mm, accessControl.enable ? '${accessControl.currentList.length}' : '关'),
                 onTap: () => BaseNavigator.push(context, const ProxyAppsPage()),
               ),
             _Row(
