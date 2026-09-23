@@ -79,6 +79,16 @@ class S {
   static const coreVersion = '核心版本';
   static const openSourceLicense = '开源许可';
 
+  // 更新（Windows 一键更新；Android 仍打开下载地址）
+  static const checkUpdate = '检查更新';
+  static const updateNow = '立即更新';
+  static const updateTitle = '更新 MeowX';
+  static const updateDownloading = '正在下载…';
+  static const updateExtracting = '正在解压…';
+  static const updateLaunching = '正在启动安装，MeowX 将自动重启…';
+  static const updateFailed = '更新失败';
+  static const goDownloadPage = '去下载页';
+
   // 通用
   static const tunnelNotConnected = '隧道未连接';
 }

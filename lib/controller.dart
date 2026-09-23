@@ -27,8 +27,11 @@ import 'package:yaml/yaml.dart';
 
 import 'common/archive.dart' show restoreBackupFiles;
 import 'common/common.dart';
+import 'meowx/app/strings.dart';
 import 'meowx/config/direct_profile.dart';
 import 'meowx/panel/account.dart';
+import 'meowx/update/update_dialog.dart';
+import 'meowx/update/update_manifest.dart';
 import 'models/models.dart';
 import 'views/profiles/override_profile.dart';
 
@@ -1135,6 +1138,8 @@ class AppController {
       final body = data['body'];
       final submits = utils.parseReleaseBody(body);
       final textTheme = context.textTheme;
+      // MeowX：Windows 有选中的包条目就走 App 内一键更新；Android / 匹配不到包时仍打开下载地址
+      final updateFile = system.isWindows ? UpdateFile.fromJson(data['file']) : null;
       final res = await globalState.showMessage(
         title: appLocalizations.discoverNewVersion,
         message: TextSpan(
@@ -1146,9 +1151,13 @@ class AppController {
               TextSpan(text: '- $submit \n', style: textTheme.bodyMedium),
           ],
         ),
-        confirmText: appLocalizations.goDownload,
+        confirmText: updateFile != null ? S.updateNow : appLocalizations.goDownload,
       );
       if (res != true) {
+        return;
+      }
+      if (updateFile != null) {
+        await runWindowsUpdate(updateFile);
         return;
       }
       // html_url 由 checkForUpdate 按本机平台 / 架构从 latest.json 选好，直接就是包的下载地址

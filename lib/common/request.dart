@@ -3,11 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:intl/intl.dart';
 import 'package:bett_box/common/common.dart';
+import 'package:bett_box/meowx/update/update_http.dart';
+import 'package:bett_box/meowx/update/update_manifest.dart';
 import 'package:bett_box/models/models.dart';
 import 'package:bett_box/state.dart';
 import 'package:flutter/cupertino.dart';
@@ -15,6 +16,8 @@ import 'package:flutter/cupertino.dart';
 class Request {
   late final Dio _dio;
   late final Dio _clashDio;
+  // 更新通道：证书按系统信任库校验（_dio 走全局 HttpOverrides，证书一律放行，不能用来拿会以管理员执行的东西）
+  late final Dio _updateDio = strictUpdateDio();
   String? userAgent;
 
   Request() {
@@ -254,11 +257,11 @@ class Request {
 
   /// 检查更新：读 dl.miaomiaowux.com/latest.json（MeowX 仓库 scripts/publish-r2.sh 发版时写），
   /// 取本平台条目比版本；有新版时 html_url 直接指向本机对应的包（按编译期 APP_ASSET_SUFFIX 匹配文件名，
-  /// Windows 便携版取便携 zip），匹配不到就落到文档站下载页。
+  /// Windows 便携版只取便携 zip），匹配不到 / 地址不在发布域名就落到文档站下载页。
   Future<Map<String, dynamic>?> checkForUpdate() async {
     try {
       final t = DateTime.now().millisecondsSinceEpoch;
-      final response = await _dio.get(
+      final response = await _updateDio.get(
         '$updateManifestUrl?t=$t',
         options: Options(responseType: ResponseType.json),
       );
@@ -281,22 +284,17 @@ class Request {
           0;
       if (!hasUpdate) return null;
       const assetSuffix = String.fromEnvironment('APP_ASSET_SUFFIX');
-      final files = (entry['files'] as List? ?? const [])
-          .whereType<Map>()
-          .toList();
-      Map? file;
-      if (appPath.isPortable) {
-        file = files.firstWhereOrNull((f) => f['kind'] == 'portable');
-      }
-      if (file == null && assetSuffix.isNotEmpty) {
-        file = files.firstWhereOrNull(
-          (f) => (f['name'] as String? ?? '').endsWith('-$assetSuffix'),
-        );
-      }
+      final file = pickUpdateFile(
+        entry['files'] as List? ?? const [],
+        portable: appPath.isPortable,
+        assetSuffix: assetSuffix,
+      );
       return {
         'tag_name': 'v$remoteVersion',
-        'html_url': file?['url'] as String? ?? downloadPageUrl,
+        'html_url': file?.url ?? downloadPageUrl,
         'body': '',
+        // 选中的包条目（kind / name / url / size / sha256），Windows 一键更新用它下载并校验
+        'file': file?.toJson(),
       };
     } catch (e) {
       commonPrint.log('Check update failed: ${e.formatErrorLog}');

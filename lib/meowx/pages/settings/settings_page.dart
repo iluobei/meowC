@@ -298,6 +298,14 @@ class SettingsPage extends ConsumerWidget {
               trailing: Text(globalState.packageInfo.version, style: MeowFont.mono(size: MeowFont.subheadline, color: mm.t2)),
             ),
             _Row(
+              icon: Icons.system_update_rounded,
+              color: mm.accent,
+              title: S.checkUpdate,
+              subtitle: system.isWindows ? '有新版本时可在 App 内直接更新' : null,
+              trailing: _chevron(mm, null),
+              onTap: _checkUpdate,
+            ),
+            _Row(
               icon: Icons.gavel_rounded,
               color: mm.good,
               title: S.openSourceLicense,
@@ -310,6 +318,16 @@ class SettingsPage extends ConsumerWidget {
       ],
     );
     return wide ? PageWidth(child: body) : body;
+  }
+
+  /// 手动检查更新：与 Bettbox 关于页同一条链路，出错 / 已是最新都弹提示
+  static Future<void> _checkUpdate() async {
+    final data = await globalState.appController.safeRun<Map<String, dynamic>?>(
+      request.checkForUpdate,
+      title: S.checkUpdate,
+      needLoading: true,
+    );
+    await globalState.appController.checkUpdateResultHandle(data: data, handleError: true);
   }
 
   static Widget _chevron(MeowTokens mm, String? count) => Row(
