@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:intl/intl.dart';
@@ -251,36 +252,52 @@ class Request {
     return MemoryImage(bytes);
   }
 
+  /// 检查更新：读 dl.miaomiaowux.com/latest.json（MeowX 仓库 scripts/publish-r2.sh 发版时写），
+  /// 取本平台条目比版本；有新版时 html_url 直接指向本机对应的包（按编译期 APP_ASSET_SUFFIX 匹配文件名，
+  /// Windows 便携版取便携 zip），匹配不到就落到文档站下载页。
   Future<Map<String, dynamic>?> checkForUpdate() async {
     try {
       final t = DateTime.now().millisecondsSinceEpoch;
       final response = await _dio.get(
-        'https://github.com/$repository/releases/latest?t=$t',
-        options: Options(
-          followRedirects: false,
-          validateStatus: (status) =>
-              status != null && status >= 300 && status < 400,
-        ),
+        '$updateManifestUrl?t=$t',
+        options: Options(responseType: ResponseType.json),
       );
-      final location = response.headers['location']?.firstOrNull;
-      if (location != null && location.contains('/releases/tag/')) {
-        final remoteVersion = location.split('/').last.trim();
-        if (remoteVersion.isNotEmpty) {
-          final version = globalState.packageInfo.version;
-          final hasUpdate =
-              utils.compareVersions(
-                remoteVersion.replaceAll('v', ''),
-                version,
-              ) >
-              0;
-          if (!hasUpdate) return null;
-          return {
-            'tag_name': remoteVersion,
-            'html_url': 'https://github.com/$repository/releases/latest',
-            'body': 'New version available. Please visit GitHub to download.',
-          };
-        }
+      final data = response.data;
+      final platform = system.isAndroid
+          ? 'android'
+          : system.isWindows
+          ? 'windows'
+          : null;
+      if (data is! Map || platform == null) return null;
+      final entry = (data['platforms'] as Map?)?[platform];
+      if (entry is! Map) return null;
+      final remoteVersion = (entry['version'] as String? ?? '').trim();
+      if (remoteVersion.isEmpty) return null;
+      final hasUpdate =
+          utils.compareVersions(
+            remoteVersion,
+            globalState.packageInfo.version,
+          ) >
+          0;
+      if (!hasUpdate) return null;
+      const assetSuffix = String.fromEnvironment('APP_ASSET_SUFFIX');
+      final files = (entry['files'] as List? ?? const [])
+          .whereType<Map>()
+          .toList();
+      Map? file;
+      if (appPath.isPortable) {
+        file = files.firstWhereOrNull((f) => f['kind'] == 'portable');
       }
+      if (file == null && assetSuffix.isNotEmpty) {
+        file = files.firstWhereOrNull(
+          (f) => (f['name'] as String? ?? '').endsWith('-$assetSuffix'),
+        );
+      }
+      return {
+        'tag_name': 'v$remoteVersion',
+        'html_url': file?['url'] as String? ?? downloadPageUrl,
+        'body': '',
+      };
     } catch (e) {
       commonPrint.log('Check update failed: ${e.formatErrorLog}');
     }

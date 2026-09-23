@@ -48,6 +48,9 @@ const customSidebarIconKey = 'custom_sidebar_icon';
 const customDashboardTitleKey = 'custom_dashboard_title';
 const double dialogCommonWidth = 300;
 const repository = 'mmwx-group/meowC';
+// 发布渠道：包放 Cloudflare R2（dl.miaomiaowux.com），latest.json 记各平台最新版本与下载地址（见 MeowX 仓库 scripts/publish-r2.sh）
+const updateManifestUrl = 'https://dl.miaomiaowux.com/latest.json';
+const downloadPageUrl = 'https://miaomiaowux.com/docs/client-download';
 const ipInfoToken = String.fromEnvironment('IPINFO_TOKEN', defaultValue: '');
 const defaultExternalController = '127.0.0.1:9090';
 const maxMobileWidth = 600;

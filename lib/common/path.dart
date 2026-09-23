@@ -13,6 +13,10 @@ class AppPath {
   Completer<Directory> tempDir = Completer();
   late String appDirPath;
 
+  /// MeowX Windows 便携版（程序目录带 `portable` 标记文件）；更新检查据此选便携 zip
+  bool get isPortable =>
+      system.isWindows && File(join(appDirPath, 'portable')).existsSync();
+
   AppPath._internal() {
     appDirPath = join(dirname(Platform.resolvedExecutable));
     getApplicationSupportDirectory().then((value) {

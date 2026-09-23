@@ -1151,18 +1151,8 @@ class AppController {
       if (res != true) {
         return;
       }
-      const String assetSuffix = String.fromEnvironment('APP_ASSET_SUFFIX');
-      String downloadUrl = 'https://github.com/$repository/releases/latest';
-
-      if (assetSuffix.isNotEmpty) {
-        final versionWithoutV = tagName.startsWith('v')
-            ? tagName.substring(1)
-            : tagName;
-        downloadUrl =
-            'https://github.com/$repository/releases/download/$tagName/MeowX-$versionWithoutV-$assetSuffix';
-      }
-
-      globalState.openUrl(downloadUrl);
+      // html_url 由 checkForUpdate 按本机平台 / 架构从 latest.json 选好，直接就是包的下载地址
+      globalState.openUrl(data['html_url'] as String? ?? downloadPageUrl);
     } else if (handleError) {
       globalState.showMessage(
         title: appLocalizations.checkUpdate,
