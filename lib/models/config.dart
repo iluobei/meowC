@@ -496,6 +496,17 @@ abstract class Config with _$Config {
       }
     } catch (_) {}
 
+    // MeowX：首页网速图默认不显示（2026-09-23）。老配置存的 homeHiddenCards 是空列表，分不清「没动过」和「手动全开」，
+    // 一次性把 chart 加进去；迁完记一笔，之后用户再打开就保留
+    try {
+      final meow = json['meow'] is Map ? Map<String, Object?>.from(json['meow'] as Map) : <String, Object?>{};
+      if (meow['homeChartMigrated'] != true) {
+        final hidden = meow['homeHiddenCards'] is List ? List<Object?>.from(meow['homeHiddenCards'] as List) : <Object?>[];
+        if (!hidden.contains('chart')) hidden.add('chart');
+        json['meow'] = {...meow, 'homeHiddenCards': hidden, 'homeChartMigrated': true};
+      }
+    } catch (_) {}
+
     return Config.fromJson(json);
   }
 }

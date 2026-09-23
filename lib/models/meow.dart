@@ -140,8 +140,8 @@ abstract class MeowSettings with _$MeowSettings {
     /// 当前的 mode=direct 是切到内置直连档时自动设的（不是用户手选）：离开直连档时据此恢复 rule
     @Default(false) bool autoDirectMode,
 
-    /// 首页关掉的卡片（HomeCard.name）
-    @Default([]) List<String> homeHiddenCards,
+    /// 首页关掉的卡片（HomeCard.name）；网速图默认不显示（Windows 上该位置是接管卡，不受此影响）
+    @Default(['chart']) List<String> homeHiddenCards,
 
     /// 订阅同步间隔（小时），0 = 手动
     @Default(24) int syncIntervalHours,
@@ -160,6 +160,9 @@ abstract class MeowSettings with _$MeowSettings {
 
     /// 已做过「TUN 栈 mixed → mips」的一次性迁移（之后用户在高级里手选 mixed 不会被改回去）
     @Default(false) bool tunStackMigrated,
+
+    /// 已做过「网速图默认隐藏」的一次性迁移（老配置存的是空列表，分不清是没动过还是手动全开；之后用户再打开就保留）
+    @Default(false) bool homeChartMigrated,
   }) = _MeowSettings;
 
   factory MeowSettings.fromJson(Map<String, Object?> json) =>
